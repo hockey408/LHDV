@@ -1,0 +1,150 @@
+import os, re
+import pandas as pd, numpy as np
+
+pd.set_option("display.float_format", "${:,.2f}".format)
+
+# ======== USER INPUTS ========
+FILE_PATH  = "loan_extract.xlsx"   # or .csv / .xlsb
+SHEET_NAME = 0
+DATE_COL   = "END_OF_MONTH_DATE"
+BANK_COL   = "BANK_CODE"
+GL_COL     = "GL_ACCOUNT_HIER_LEVEL_4"
+BAL_COL    = "GL_BALANCE"
+
+# ======== Loader (Excel/CSV/xlsb) ========
+def read_any(path, sheet=None, parse_dates=None):
+    ext = os.path.splitext(path)[1].lower()
+    if ext == ".csv":
+        return pd.read_csv(path, parse_dates=parse_dates, infer_datetime_format=True)
+    elif ext in [".xlsx", ".xls"]:
+        return pd.read_excel(path, sheet_name=sheet, parse_dates=parse_dates, engine="openpyxl")
+    elif ext == ".xlsb":
+        return pd.read_excel(path, sheet_name=sheet, parse_dates=parse_dates, engine="pyxlsb")
+    else:
+        raise ValueError(f"Unsupported file type: {ext}")
+
+df = read_any(FILE_PATH, sheet=SHEET_NAME, parse_dates=[DATE_COL])
+
+# ======== Normalize column names ========
+def normalize_name(c):
+    c2 = str(c).strip()
+    # keep $, % for detection, but remove other punctuation
+    c2 = re.sub(r"[^\w\s\$\%]", "_", c2)   # replace other punct with _
+    c2 = re.sub(r"\s+", "_", c2)           # collapse whitespace to _
+    return c2
+
+orig_cols = df.columns.tolist()
+df.columns = [normalize_name(c) for c in df.columns]
+
+# Map of normalized -> original (just for debugging if needed)
+name_map = dict(zip(df.columns, orig_cols))
+
+# ======== Basic checks & coercions ========
+required = [DATE_COL, BANK_COL, GL_COL, BAL_COL]
+missing = [c for c in required if c not in df.columns]
+if missing:
+    raise KeyError(f"Missing required columns {missing}. Available: {list(df.columns)}")
+
+df[DATE_COL] = pd.to_datetime(df[DATE_COL], errors="coerce").dt.date
+df[BAL_COL]  = pd.to_numeric(df[BAL_COL], errors="coerce").fillna(0)
+
+# ======== Try to find existing MoM columns (robust detection) ========
+def find_first(candidates, cols):
+    cols_lower = {c.lower(): c for c in cols}
+    for cand in candidates:
+        if cand.lower() in cols_lower:
+            return cols_lower[cand.lower()]
+    # fallback: regex search
+    for c in cols:
+        for pat in candidates:
+            if re.fullmatch(pat.replace("%", r"\%").replace("$", r"\$"), c, flags=re.IGNORECASE):
+                return c
+    return None
+
+dollar_candidates = [
+    "MoM_GL_$", "MOM_GL_$", "MoM_GL_USD", "MOM_GL_USD",
+    "MoM_GL_DOLLAR", "MOM_GL_DOLLAR", "MoM_Dollar", "MOM_Dollar"
+]
+pct_candidates = [
+    "MoM_GL_%", "MoM_GL_PCT", "MOM_GL_PCT", "MoM_GL_PERCENT", "MOM_GL_PERCENT",
+    "MoM_%", "MoM_PCT"
+]
+
+mom_dollar_col = find_first(dollar_candidates, df.columns)
+mom_pct_col    = find_first(pct_candidates, df.columns)
+
+# ======== Identify last two month-ends present ========
+dates = sorted(d for d in df[DATE_COL].dropna().unique())
+if len(dates) < 2:
+    raise ValueError(f"Need at least 2 distinct {DATE_COL} values; found {dates}")
+prior_eom, current_eom = dates[-2], dates[-1]
+
+cur  = df[df[DATE_COL] == current_eom].copy()
+prev = df[df[DATE_COL] == prior_eom].copy()
+
+# ======== If MoM columns missing, compute them from balances ========
+if mom_dollar_col is None or mom_pct_col is None:
+    # Roll to (EOM, BANK, GL) granularity
+    prev_roll = prev.groupby([BANK_COL, GL_COL], dropna=False)[BAL_COL].sum().rename("Prior_GL_BALANCE")
+    cur_roll  = cur.groupby([BANK_COL, GL_COL], dropna=False)[BAL_COL].sum().rename("Current_GL_BALANCE")
+    j = prev_roll.to_frame().join(cur_roll, how="outer").fillna(0)
+    j["MoM_GL_$"]   = j["Current_GL_BALANCE"] - j["Prior_GL_BALANCE"]
+    j["MoM_GL_PCT"] = np.where(j["Prior_GL_BALANCE"] == 0, np.nan, j["MoM_GL_$"] / j["Prior_GL_BALANCE"])
+else:
+    # Use provided MoM columns (sum duplicates just in case)
+    # Build join using balances too so we can show prior/current side by side:
+    prev_roll = prev.groupby([BANK_COL, GL_COL], dropna=False)[BAL_COL].sum().rename("Prior_GL_BALANCE")
+    cur_roll  = cur.groupby([BANK_COL, GL_COL], dropna=False)[[BAL_COL, mom_dollar_col, mom_pct_col]] \
+                   .sum(numeric_only=True)
+    # rename MoM columns to standard names
+    cur_roll = cur_roll.rename(columns={mom_dollar_col: "MoM_GL_$", mom_pct_col: "MoM_GL_PCT",
+                                        BAL_COL: "Current_GL_BALANCE"})
+    j = prev_roll.to_frame().join(cur_roll, how="outer").fillna(0)
+
+# ======== Nice display + matrices ========
+joined = j.reset_index()
+
+print(f"Prior EOM:   {prior_eom}")
+print(f"Current EOM: {current_eom}")
+print("\n=== Sample joined rows ===")
+display(joined.head(20))
+
+# Matrix A: rows = GL L4, cols = Bank — current & prior
+A_cur  = joined.pivot_table(index=GL_COL, columns=BANK_COL, values="Current_GL_BALANCE", aggfunc="sum", fill_value=0)
+A_prev = joined.pivot_table(index=GL_COL, columns=BANK_COL, values="Prior_GL_BALANCE",   aggfunc="sum", fill_value=0)
+A_mom$ = joined.pivot_table(index=GL_COL, columns=BANK_COL, values="MoM_GL_$",           aggfunc="sum", fill_value=0)
+A_mom% = joined.pivot_table(index=GL_COL, columns=BANK_COL, values="MoM_GL_PCT",         aggfunc="mean")
+
+print("\n=== Current month matrix (rows=GL, cols=Bank) ===")
+display(A_cur.head(10))
+print("\n=== Prior month matrix (rows=GL, cols=Bank) ===")
+display(A_prev.head(10))
+print("\n=== MoM $ matrix (rows=GL, cols=Bank) ===")
+display(A_mom$.head(10))
+print("\n=== MoM % matrix (rows=GL, cols=Bank) ===")
+display(A_mom%.head(10))
+
+# Matrix B: rows = Bank, cols = GL L4
+B_cur  = joined.pivot_table(index=BANK_COL, columns=GL_COL, values="Current_GL_BALANCE", aggfunc="sum", fill_value=0)
+B_prev = joined.pivot_table(index=BANK_COL, columns=GL_COL, values="Prior_GL_BALANCE",   aggfunc="sum", fill_value=0)
+B_mom$ = joined.pivot_table(index=BANK_COL, columns=GL_COL, values="MoM_GL_$",           aggfunc="sum", fill_value=0)
+B_mom% = joined.pivot_table(index=BANK_COL, columns=GL_COL, values="MoM_GL_PCT",         aggfunc="mean")
+
+print("\n=== Current month matrix (rows=Bank, cols=GL) ===")
+display(B_cur.head(10))
+print("\n=== Prior month matrix (rows=Bank, cols=GL) ===")
+display(B_prev.head(10))
+
+# ======== Save raw numeric outputs ========
+os.makedirs("outputs", exist_ok=True)
+joined.to_csv("outputs/balances_with_mom_joined.csv", index=False)
+A_cur.to_csv("outputs/current_by_GL_rows_bank_cols.csv")
+A_prev.to_csv("outputs/prior_by_GL_rows_bank_cols.csv")
+A_mom$.to_csv("outputs/mom_dollar_by_GL_rows_bank_cols.csv")
+A_mom%.to_csv("outputs/mom_pct_by_GL_rows_bank_cols.csv")
+B_cur.to_csv("outputs/current_by_bank_rows_GL_cols.csv")
+B_prev.to_csv("outputs/prior_by_bank_rows_GL_cols.csv")
+B_mom$.to_csv("outputs/mom_dollar_by_bank_rows_GL_cols.csv")
+B_mom%.to_csv("outputs/mom_pct_by_bank_rows_GL_cols.csv")
+
+print("\nSaved CSVs in ./outputs/")
