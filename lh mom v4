@@ -1,0 +1,107 @@
+import os, re
+import pandas as pd, numpy as np
+
+pd.set_option("display.float_format", "${:,.2f}".format)
+
+# ======== USER INPUTS ========
+FILE_PATH  = "loan_extract.xlsx"   # or .csv / .xlsb
+SHEET_NAME = 0
+DATE_COL   = "END_OF_MONTH_DATE"
+BANK_COL   = "BANK_CODE"
+GL_COL     = "GL_ACCOUNT_HIER_LEVEL_4"
+BAL_COL    = "GL_BALANCE"
+
+# ======== Loader ========
+def read_any(path, sheet=None, parse_dates=None):
+    ext = os.path.splitext(path)[1].lower()
+    if ext == ".csv":
+        return pd.read_csv(path, parse_dates=parse_dates, infer_datetime_format=True)
+    elif ext in [".xlsx", ".xls"]:
+        return pd.read_excel(path, sheet_name=sheet, parse_dates=parse_dates, engine="openpyxl")
+    elif ext == ".xlsb":
+        return pd.read_excel(path, sheet_name=sheet, parse_dates=parse_dates, engine="pyxlsb")
+    else:
+        raise ValueError(f"Unsupported file type: {ext}")
+
+df = read_any(FILE_PATH, sheet=SHEET_NAME, parse_dates=[DATE_COL])
+df.columns = [str(c).strip() for c in df.columns]
+
+# ======== Checks ========
+required = [DATE_COL, BANK_COL, GL_COL, BAL_COL]
+missing = [c for c in required if c not in df.columns]
+if missing:
+    raise KeyError(f"Missing required columns {missing}. Available: {list(df.columns)}")
+
+df[DATE_COL] = pd.to_datetime(df[DATE_COL], errors="coerce").dt.date
+df[BAL_COL]  = pd.to_numeric(df[BAL_COL], errors="coerce").fillna(0)
+
+# Try to find MoM columns if they exist
+mom_dollar_candidates = ["MoM_GL_$","MoM_GL_USD","MoM_Dollar"]
+mom_pct_candidates    = ["MoM_GL_PCT","MoM_GL_%","MoM_PCT","MoM_Percent"]
+
+def find_column(candidates):
+    for c in candidates:
+        if c in df.columns:
+            return c
+    return None
+
+mom_dollar_col = find_column(mom_dollar_candidates)
+mom_pct_col    = find_column(mom_pct_candidates)
+
+# Identify last two EOMs
+dates = sorted(d for d in df[DATE_COL].dropna().unique())
+if len(dates) < 2:
+    raise ValueError(f"Need at least 2 distinct {DATE_COL} values; found {dates}")
+prior_eom, current_eom = dates[-2], dates[-1]
+
+cur  = df[df[DATE_COL] == current_eom].copy()
+prev = df[df[DATE_COL] == prior_eom].copy()
+
+# Build joined table
+if mom_dollar_col and mom_pct_col:
+    prev_roll = prev.groupby([BANK_COL, GL_COL], dropna=False)[BAL_COL].sum().rename("Prior_GL_BALANCE")
+    cur_roll  = cur.groupby([BANK_COL, GL_COL], dropna=False)[[BAL_COL, mom_dollar_col, mom_pct_col]] \
+                   .sum(numeric_only=True).rename(
+                       columns={BAL_COL: "Current_GL_BALANCE",
+                                mom_dollar_col: "MoM_GL_DOLLAR",
+                                mom_pct_col: "MoM_GL_PCT"})
+    joined = prev_roll.to_frame().join(cur_roll, how="outer").fillna(0).reset_index()
+else:
+    prev_roll = prev.groupby([BANK_COL, GL_COL], dropna=False)[BAL_COL].sum().rename("Prior_GL_BALANCE")
+    cur_roll  = cur.groupby([BANK_COL, GL_COL], dropna=False)[BAL_COL].sum().rename("Current_GL_BALANCE")
+    joined = prev_roll.to_frame().join(cur_roll, how="outer").fillna(0).reset_index()
+    joined["MoM_GL_DOLLAR"] = joined["Current_GL_BALANCE"] - joined["Prior_GL_BALANCE"]
+    joined["MoM_GL_PCT"] = np.where(
+        joined["Prior_GL_BALANCE"] == 0,
+        np.nan,
+        joined["MoM_GL_DOLLAR"] / joined["Prior_GL_BALANCE"]
+    )
+
+print(f"Prior EOM:   {prior_eom}")
+print(f"Current EOM: {current_eom}")
+display(joined.head(20))
+
+# Build matrices (safe names)
+A_cur   = joined.pivot_table(index=GL_COL, columns=BANK_COL, values="Current_GL_BALANCE", aggfunc="sum", fill_value=0)
+A_prior = joined.pivot_table(index=GL_COL, columns=BANK_COL, values="Prior_GL_BALANCE",   aggfunc="sum", fill_value=0)
+A_mom_dollar = joined.pivot_table(index=GL_COL, columns=BANK_COL, values="MoM_GL_DOLLAR", aggfunc="sum", fill_value=0)
+A_mom_pct    = joined.pivot_table(index=GL_COL, columns=BANK_COL, values="MoM_GL_PCT",    aggfunc="mean")
+
+print("\n=== Current month matrix (GL rows, Bank cols) ===")
+display(A_cur.head(10))
+print("\n=== Prior month matrix (GL rows, Bank cols) ===")
+display(A_prior.head(10))
+print("\n=== MoM $ matrix (GL rows, Bank cols) ===")
+display(A_mom_dollar.head(10))
+print("\n=== MoM % matrix (GL rows, Bank cols) ===")
+display(A_mom_pct.head(10))
+
+# Save outputs
+os.makedirs("outputs", exist_ok=True)
+joined.to_csv("outputs/joined_balances.csv", index=False)
+A_cur.to_csv("outputs/current_by_GL.csv")
+A_prior.to_csv("outputs/prior_by_GL.csv")
+A_mom_dollar.to_csv("outputs/mom_dollar_by_GL.csv")
+A_mom_pct.to_csv("outputs/mom_pct_by_GL.csv")
+
+print("\nFiles saved in ./outputs")
