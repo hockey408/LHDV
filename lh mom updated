@@ -1,0 +1,100 @@
+# ===== Build MoM matrices from existing MoM_GL_$ and MoM_GL_PCT =====
+import os, pandas as pd, numpy as np
+
+# 1) Pretty display (no scientific notation; currency everywhere by default)
+pd.set_option("display.float_format", "${:,.2f}".format)
+
+# ---- USER INPUTS ----
+FILE_PATH  = "loan_extract.xlsx"    # "loan_extract.xlsx" | "loan_extract.csv" | "loan_extract.xlsb"
+SHEET_NAME = 0                      # sheet name or index for Excel; ignored for CSV
+DATE_COL   = "END_OF_MONTH_DATE"
+BANK_COL   = "BANK_CODE"
+GL_COL     = "GL_ACCOUNT_HIER_LEVEL_4"
+MOM_$      = "MoM_GL_$"
+MOM_PCT    = "MoM_GL_PCT"
+
+REQUIRED = [DATE_COL, BANK_COL, GL_COL, MOM_$, MOM_PCT]
+
+# 2) Loader for Excel/CSV/xlsb
+def read_any(path, sheet=None, parse_dates=None):
+    ext = os.path.splitext(path)[1].lower()
+    if ext == ".csv":
+        return pd.read_csv(path, parse_dates=parse_dates, infer_datetime_format=True)
+    elif ext in [".xlsx", ".xls"]:
+        return pd.read_excel(path, sheet_name=sheet, parse_dates=parse_dates, engine="openpyxl")
+    elif ext == ".xlsb":
+        # pip install pyxlsb
+        return pd.read_excel(path, sheet_name=sheet, parse_dates=parse_dates, engine="pyxlsb")
+    else:
+        raise ValueError(f"Unsupported file extension: {ext}")
+
+df = read_any(FILE_PATH, sheet=SHEET_NAME, parse_dates=[DATE_COL])
+
+# 3) Basic cleanup + checks
+df.columns = [c.strip() for c in df.columns]
+missing = [c for c in REQUIRED if c not in df.columns]
+if missing:
+    raise KeyError(f"Missing required columns: {missing}")
+
+# Ensure types
+df[DATE_COL] = pd.to_datetime(df[DATE_COL], errors="coerce").dt.date
+for c in [MOM_$, MOM_PCT]:
+    df[c] = pd.to_numeric(df[c], errors="coerce")
+
+# 4) Work off the latest EOM only (MoM columns already encode change vs prior)
+latest_eom = df[DATE_COL].dropna().max()
+cur = df[df[DATE_COL] == latest_eom].copy()
+if cur.empty:
+    raise ValueError(f"No rows for latest {DATE_COL} found. Latest detected: {latest_eom}")
+
+# 5) Pivot helpers
+def pivot_mom(d, values, index, columns):
+    # Sum across any duplicates of the same bucket
+    return d.pivot_table(index=index, columns=columns, values=values, aggfunc="sum", fill_value=0)
+
+# A) rows = GL L4, cols = BANK (MoM $ and %)
+A_mom_dollar = pivot_mom(cur, MOM_$,   index=GL_COL, columns=BANK_COL)
+# For % change, average weighted by prior balance would be ideal; since we don't have prior here,
+# we take a simple mean if duplicates exist:
+A_mom_pct    = cur.pivot_table(index=GL_COL, columns=BANK_COL, values=MOM_PCT, aggfunc="mean")
+
+# B) rows = BANK, cols = GL L4 (MoM $ and %)
+B_mom_dollar = pivot_mom(cur, MOM_$,   index=BANK_COL, columns=GL_COL)
+B_mom_pct    = cur.pivot_table(index=BANK_COL, columns=GL_COL, values=MOM_PCT, aggfunc="mean")
+
+# 6) Nicely formatted views for the notebook
+def fmt_currency(df_):
+    return df_.applymap(lambda x: "" if pd.isna(x) else f"${x:,.2f}")
+
+def fmt_percent(df_):
+    return df_.applymap(lambda x: "" if pd.isna(x) else f"{x:.2%}")
+
+A_mom_dollar_fmt = fmt_currency(A_mom_dollar)
+A_mom_pct_fmt    = fmt_percent(A_mom_pct)
+B_mom_dollar_fmt = fmt_currency(B_mom_dollar)
+B_mom_pct_fmt    = fmt_percent(B_mom_pct)
+
+print(f"Latest month detected: {latest_eom}\n")
+
+print("=== Matrix A ($ MoM): rows=GL_ACCOUNT_HIER_LEVEL_4, cols=BANK_CODE ===")
+display(A_mom_dollar_fmt.head(15))
+print("\n=== Matrix A (% MoM) ===")
+display(A_mom_pct_fmt.head(15))
+
+print("\n=== Matrix B ($ MoM): rows=BANK_CODE, cols=GL_ACCOUNT_HIER_LEVEL_4 ===")
+display(B_mom_dollar_fmt.head(15))
+print("\n=== Matrix B (% MoM) ===")
+display(B_mom_pct_fmt.head(15))
+
+# 7) Save raw numeric outputs (best for Excel/BI)
+os.makedirs("outputs", exist_ok=True)
+A_mom_dollar.to_csv("outputs/mom_GL_L4_by_BANK_dollar.csv")
+A_mom_pct.to_csv("outputs/mom_GL_L4_by_BANK_pct.csv")
+B_mom_dollar.to_csv("outputs/mom_BANK_by_GL_L4_dollar.csv")
+B_mom_pct.to_csv("outputs/mom_BANK_by_GL_L4_pct.csv")
+
+print("\nSaved to ./outputs:")
+print(" - mom_GL_L4_by_BANK_dollar.csv")
+print(" - mom_GL_L4_by_BANK_pct.csv")
+print(" - mom_BANK_by_GL_L4_dollar.csv")
+print(" - mom_BANK_by_GL_L4_pct.csv")
