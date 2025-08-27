@@ -1,0 +1,99 @@
+import os
+import pandas as pd
+import numpy as np
+
+pd.set_option("display.float_format", "${:,.2f}".format)
+
+# --- USER INPUT ---
+FILE_PATH  = "loan_extract.xlsx"    # or "loan_extract.csv" | "loan_extract.xlsb"
+SHEET_NAME = 0
+DATE_COL   = "END_OF_MONTH_DATE"
+BANK_COL   = "BANK_CODE"
+GL_COL     = "GL_ACCOUNT_HIER_LEVEL_4"
+BAL_COL    = "GL_BALANCE"
+MOM_$      = "MoM_GL_$"
+MOM_PCT    = "MoM_GL_PCT"
+
+REQUIRED = [DATE_COL, BANK_COL, GL_COL, BAL_COL, MOM_$, MOM_PCT]
+
+# --- Load ---
+def read_any(path, sheet=None, parse_dates=None):
+    ext = os.path.splitext(path)[1].lower()
+    if ext == ".csv":
+        return pd.read_csv(path, parse_dates=parse_dates, infer_datetime_format=True)
+    elif ext in [".xlsx", ".xls"]:
+        return pd.read_excel(path, sheet_name=sheet, parse_dates=parse_dates, engine="openpyxl")
+    elif ext == ".xlsb":
+        return pd.read_excel(path, sheet_name=sheet, parse_dates=parse_dates, engine="pyxlsb")
+    else:
+        raise ValueError(f"Unsupported file extension: {ext}")
+
+df = read_any(FILE_PATH, sheet=SHEET_NAME, parse_dates=[DATE_COL])
+df.columns = [c.strip() for c in df.columns]
+
+# --- Checks and cleanup ---
+missing = [c for c in REQUIRED if c not in df.columns]
+if missing:
+    raise KeyError(f"Missing required columns: {missing}")
+
+df[DATE_COL] = pd.to_datetime(df[DATE_COL], errors="coerce").dt.date
+df[BAL_COL] = pd.to_numeric(df[BAL_COL], errors="coerce").fillna(0)
+df[MOM_$] = pd.to_numeric(df[MOM_$], errors="coerce")
+df[MOM_PCT] = pd.to_numeric(df[MOM_PCT], errors="coerce")
+
+# --- Find the last 2 month-ends ---
+all_dates = sorted([d for d in df[DATE_COL].dropna().unique()])
+if len(all_dates) < 2:
+    raise ValueError("Less than 2 distinct month-end dates in data.")
+prior_eom, current_eom = all_dates[-2], all_dates[-1]
+
+# --- Subsets for the two months ---
+cur = df[df[DATE_COL] == current_eom].copy()
+prev = df[df[DATE_COL] == prior_eom].copy()
+
+# --- Join current and prior balances ---
+joined = pd.merge(
+    prev[[BANK_COL, GL_COL, BAL_COL]],
+    cur[[BANK_COL, GL_COL, BAL_COL, MOM_$, MOM_PCT]],
+    on=[BANK_COL, GL_COL],
+    how="outer",
+    suffixes=("_prior", "_current")
+)
+
+joined = joined.fillna(0)
+joined.rename(columns={
+    f"{BAL_COL}_prior":   "Prior_GL_BALANCE",
+    f"{BAL_COL}_current": "Current_GL_BALANCE",
+    MOM_$:                "MoM_GL_$",
+    MOM_PCT:              "MoM_GL_PCT"
+}, inplace=True)
+
+# --- Display sample ---
+print(f"Prior EOM:   {prior_eom}")
+print(f"Current EOM: {current_eom}")
+print("\n=== Sample joined table ===")
+display(joined.head(20))
+
+# --- Optional: pivot by GL then Bank ---
+pivot_current = cur.pivot_table(
+    index=GL_COL, columns=BANK_COL, values=BAL_COL, aggfunc="sum", fill_value=0
+)
+pivot_prior = prev.pivot_table(
+    index=GL_COL, columns=BANK_COL, values=BAL_COL, aggfunc="sum", fill_value=0
+)
+
+print("\n=== Current month matrix (rows=GL, cols=Bank) ===")
+display(pivot_current.head(10))
+print("\n=== Prior month matrix (rows=GL, cols=Bank) ===")
+display(pivot_prior.head(10))
+
+# --- Save outputs ---
+os.makedirs("outputs", exist_ok=True)
+joined.to_csv("outputs/GL_balances_MoM_joined.csv", index=False)
+pivot_current.to_csv("outputs/GL_balances_current_matrix.csv")
+pivot_prior.to_csv("outputs/GL_balances_prior_matrix.csv")
+
+print("\nFiles saved in ./outputs:")
+print(" - GL_balances_MoM_joined.csv")
+print(" - GL_balances_current_matrix.csv")
+print(" - GL_balances_prior_matrix.csv")
