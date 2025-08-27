@@ -1,0 +1,158 @@
+# ========= 1) Imports & Config =========
+import os
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+
+# --- USER INPUTS: point these at your uploaded file ---
+FILE_PATH = "loan_extract.xlsx"   # e.g. "loan_extract.xlsx", "loan_extract.csv", "loan_extract.xlsb"
+SHEET_NAME = 0                    # sheet name or index for Excel; ignored for CSV
+DATE_COL = "END_OF_MONTH_DATE"    # must match your extract
+REQUIRED_COLS = [
+    "END_OF_MONTH_DATE",
+    "REVISED_BANK",
+    "GL_ACCOUNT_HIER_LEVEL_4",
+    "GL_BALANCE",
+    "COMMITMENT_BALANCE",
+    "EXPOSURE_AMOUNT",
+    "AVAILABLE_BALANCE",
+]
+
+# ========= 2) Load helper (Excel/CSV/xlsb) =========
+def read_any(path, sheet=None, date_cols=None):
+    ext = os.path.splitext(path)[1].lower()
+    if ext == ".csv":
+        return pd.read_csv(path, parse_dates=date_cols, infer_datetime_format=True)
+    elif ext in [".xlsx", ".xls"]:
+        return pd.read_excel(path, sheet_name=sheet, parse_dates=date_cols, engine="openpyxl")
+    elif ext == ".xlsb":
+        # pip install pyxlsb
+        return pd.read_excel(path, sheet_name=sheet, parse_dates=date_cols, engine="pyxlsb")
+    else:
+        raise ValueError(f"Unsupported file extension: {ext}")
+
+df = read_any(FILE_PATH, sheet=SHEET_NAME, date_cols=[DATE_COL])
+
+# ========= 3) Basic cleaning / standardization =========
+# Strip whitespace in column names and force upper snake to reduce surprises
+df.columns = [c.strip() for c in df.columns]
+
+# Coerce expected numeric columns (won’t fail if missing—just attempt)
+for c in ["GL_BALANCE", "COMMITMENT_BALANCE", "EXPOSURE_AMOUNT", "AVAILABLE_BALANCE"]:
+    if c in df.columns:
+        df[c] = pd.to_numeric(df[c], errors="coerce")
+
+# Ensure date
+if DATE_COL not in df.columns:
+    raise KeyError(f"Date column '{DATE_COL}' not found. Available: {list(df.columns)}")
+df[DATE_COL] = pd.to_datetime(df[DATE_COL], errors="coerce").dt.date
+
+# ========= 4) Validate structure =========
+missing = [c for c in REQUIRED_COLS if c not in df.columns]
+if missing:
+    raise KeyError(f"Missing required columns: {missing}")
+
+# Only keep last 2 distinct EOMs (sorted)
+two_eoms = sorted(df[DATE_COL].dropna().unique())[-2:]
+if len(two_eoms) < 2:
+    raise ValueError(f"Expected at least 2 distinct {DATE_COL} values. Found: {two_eoms}")
+
+df2 = df[df[DATE_COL].isin(two_eoms)].copy()
+
+# ========= 5) Rollups (match your SQL roll step) =========
+grp_keys = [DATE_COL, "REVISED_BANK", "GL_ACCOUNT_HIER_LEVEL_4"]
+roll = (df2
+        .groupby(grp_keys, dropna=False)[["GL_BALANCE","COMMITMENT_BALANCE","EXPOSURE_AMOUNT","AVAILABLE_BALANCE"]]
+        .sum()
+        .reset_index())
+
+# ========= 6) MoM deltas (by bank + GL L4) =========
+roll_sorted = roll.sort_values([ "REVISED_BANK", "GL_ACCOUNT_HIER_LEVEL_4", DATE_COL ])
+roll_sorted["MoM_GL_$"] = (roll_sorted
+                           .groupby(["REVISED_BANK","GL_ACCOUNT_HIER_LEVEL_4"])["GL_BALANCE"]
+                           .diff(1))
+prev = (roll_sorted
+        .groupby(["REVISED_BANK","GL_ACCOUNT_HIER_LEVEL_4"])["GL_BALANCE"]
+        .shift(1))
+roll_sorted["MoM_GL_%"] = np.where(prev.fillna(0)==0, np.nan, roll_sorted["MoM_GL_$"]/prev)
+
+# Split current vs prior month for convenience
+prior_eom, current_eom = two_eoms
+cur_df  = roll_sorted[roll_sorted[DATE_COL] == current_eom].copy()
+prev_df = roll_sorted[roll_sorted[DATE_COL] == prior_eom].copy()
+
+# ========= 7) Reconciliation-style pivot =========
+# Rows: GL_ACCOUNT_HIER_LEVEL_4
+# Columns: one per REVISED_BANK + Total_Banks + GL Total + Variance $, Variance %
+pivot = pd.pivot_table(
+    roll_sorted,
+    index="GL_ACCOUNT_HIER_LEVEL_4",
+    columns="REVISED_BANK",
+    values="GL_BALANCE",
+    aggfunc="sum",
+    fill_value=0
+)
+
+pivot["Total_Banks"] = pivot.sum(axis=1)  # sum across all banks
+
+# GL Total from your fact (same as Total_Banks here if the extract is already GL-based)
+# But we keep a separate column in case you join true GL later:
+pivot["GL_Total"] = pivot["Total_Banks"]
+
+pivot["Var_$"] = pivot["Total_Banks"] - pivot["GL_Total"]
+pivot["Var_%"] = np.where(pivot["GL_Total"]==0, np.nan, pivot["Var_$"]/pivot["GL_Total"])
+
+# Sort by absolute variance for quick review
+pivot = pivot.sort_values("Var_$", key=lambda s: s.abs(), ascending=False)
+
+print(f"\nTwo EOMs detected: prior={prior_eom}, current={current_eom}")
+print("\n=== Reconciliation Matrix (head) ===")
+display(pivot.head(10))
+
+# ========= 8) Quick KPI summary =========
+kpis = {
+    "Current GL Total": cur_df["GL_BALANCE"].sum(),
+    "Prior GL Total":   prev_df["GL_BALANCE"].sum(),
+}
+kpis["MoM $"] = kpis["Current GL Total"] - kpis["Prior GL Total"]
+kpis["MoM %"] = (kpis["MoM $"] / kpis["Prior GL Total"]) if kpis["Prior GL Total"] else np.nan
+
+kpi_df = pd.DataFrame([kpis])
+print("\n=== KPIs ===")
+display(kpi_df)
+
+# ========= 9) Charts =========
+# a) Top movers by absolute MoM $ (current month rows only)
+mov = cur_df[["GL_ACCOUNT_HIER_LEVEL_4","MoM_GL_$"]].copy()
+mov = mov.groupby("GL_ACCOUNT_HIER_LEVEL_4")["MoM_GL_$"].sum().sort_values(key=np.abs, ascending=False).head(10)
+
+plt.figure()
+mov.plot(kind="bar")
+plt.title("Top 10 GL L4 Movers (MoM $)")
+plt.ylabel("MoM Δ GL Balance")
+plt.tight_layout()
+plt.show()
+
+# b) Current vs Prior by bank (total level)
+bank_tot = (roll_sorted
+            .groupby([DATE_COL,"REVISED_BANK"])["GL_BALANCE"]
+            .sum()
+            .reset_index())
+pivot_bank = bank_tot.pivot(index="REVISED_BANK", columns=DATE_COL, values="GL_BALANCE").fillna(0)
+pivot_bank = pivot_bank.loc[sorted(pivot_bank.index)]
+
+plt.figure()
+pivot_bank.plot(kind="bar")
+plt.title("Bank Totals: Current vs Prior EOM")
+plt.ylabel("GL Balance")
+plt.tight_layout()
+plt.show()
+
+# ========= 10) Optional: save outputs =========
+OUT_DIR = "outputs"
+os.makedirs(OUT_DIR, exist_ok=True)
+pivot.to_csv(os.path.join(OUT_DIR, "recon_matrix_by_GL_L4.csv"))
+kpi_df.to_csv(os.path.join(OUT_DIR, "kpis.csv"), index=False)
+roll_sorted.to_parquet(os.path.join(OUT_DIR, "rolled_with_mom.parquet"), index=False)
+
+print("\nFiles saved in ./outputs: recon_matrix_by_GL_L4.csv, kpis.csv, rolled_with_mom.parquet")
