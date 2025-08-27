@@ -1,0 +1,128 @@
+# ===== MoM Change Matrices by BANK_CODE and GL_ACCOUNT_HIER_LEVEL_4 =====
+import os, pandas as pd, numpy as np
+
+# Pretty printing: show dollars instead of scientific notation
+pd.set_option("display.float_format", "${:,.2f}".format)
+
+# ---------- USER INPUT ----------
+FILE_PATH  = "loan_extract.xlsx"   # "loan_extract.xlsx" | "loan_extract.csv" | "loan_extract.xlsb"
+SHEET_NAME = 0                     # Excel sheet index/name; ignored for CSV
+DATE_COL   = "END_OF_MONTH_DATE"   # date column in your extract
+
+REQUIRED_COLS = [
+    "END_OF_MONTH_DATE",
+    "BANK_CODE",                   # <- updated name
+    "GL_ACCOUNT_HIER_LEVEL_4",
+    "GL_BALANCE",
+]
+
+# ---------- Loader that supports Excel/CSV/xlsb ----------
+def read_any(path, sheet=None, parse_dates=None):
+    ext = os.path.splitext(path)[1].lower()
+    if ext == ".csv":
+        return pd.read_csv(path, parse_dates=parse_dates, infer_datetime_format=True)
+    elif ext in [".xlsx", ".xls"]:
+        return pd.read_excel(path, sheet_name=sheet, parse_dates=parse_dates, engine="openpyxl")
+    elif ext == ".xlsb":
+        # pip install pyxlsb
+        return pd.read_excel(path, sheet_name=sheet, parse_dates=parse_dates, engine="pyxlsb")
+    else:
+        raise ValueError(f"Unsupported file extension: {ext}")
+
+df = read_any(FILE_PATH, sheet=SHEET_NAME, parse_dates=[DATE_COL])
+
+# ---------- Basic cleaning ----------
+df.columns = [c.strip() for c in df.columns]
+missing = [c for c in REQUIRED_COLS if c not in df.columns]
+if missing:
+    raise KeyError(f"Missing required columns: {missing}")
+
+# Ensure date type (reduce to date only)
+df[DATE_COL] = pd.to_datetime(df[DATE_COL], errors="coerce").dt.date
+
+# Keep the last 2 distinct EOMs present in the file
+eoms = sorted([d for d in df[DATE_COL].dropna().unique()])
+if len(eoms) < 2:
+    raise ValueError(f"Expected ≥2 distinct {DATE_COL} values, found: {eoms}")
+prior_eom, current_eom = eoms[-2], eoms[-1]
+
+df2 = df[df[DATE_COL].isin([prior_eom, current_eom])].copy()
+
+# Coerce GL_BALANCE numeric
+df2["GL_BALANCE"] = pd.to_numeric(df2["GL_BALANCE"], errors="coerce").fillna(0)
+
+# ---------- Roll up to Bank x GL L4 at EOM ----------
+keys = [DATE_COL, "BANK_CODE", "GL_ACCOUNT_HIER_LEVEL_4"]
+rolled = (df2.groupby(keys, dropna=False)["GL_BALANCE"].sum().reset_index())
+
+# Split prior/current
+cur  = rolled[rolled[DATE_COL] == current_eom].copy()
+prev = rolled[rolled[DATE_COL] == prior_eom].copy()
+
+# Helper to pivot one EOM
+def pivot_one(d, index, columns, values="GL_BALANCE"):
+    return d.pivot_table(index=index, columns=columns, values=values, aggfunc="sum", fill_value=0)
+
+# ---------- Matrix A: rows = GL L4, cols = BANK_CODE ----------
+A_cur  = pivot_one(cur,  index="GL_ACCOUNT_HIER_LEVEL_4", columns="BANK_CODE")
+A_prev = pivot_one(prev, index="GL_ACCOUNT_HIER_LEVEL_4", columns="BANK_CODE")
+
+# Align shapes before math
+A_prev = A_prev.reindex(index=A_cur.index.union(A_prev.index),
+                        columns=A_cur.columns.union(A_prev.columns), fill_value=0)
+A_cur  = A_cur.reindex_like(A_prev).fillna(0)
+
+A_mom_dollar = A_cur - A_prev
+with np.errstate(divide='ignore', invalid='ignore'):
+    A_mom_pct = np.where(A_prev == 0, np.nan, A_mom_dollar / A_prev)
+A_mom_pct = pd.DataFrame(A_mom_pct, index=A_prev.index, columns=A_prev.columns)
+
+# ---------- Matrix B: rows = BANK_CODE, cols = GL L4 ----------
+B_cur  = pivot_one(cur,  index="BANK_CODE", columns="GL_ACCOUNT_HIER_LEVEL_4")
+B_prev = pivot_one(prev, index="BANK_CODE", columns="GL_ACCOUNT_HIER_LEVEL_4")
+
+B_prev = B_prev.reindex(index=B_cur.index.union(B_prev.index),
+                        columns=B_cur.columns.union(B_prev.columns), fill_value=0)
+B_cur  = B_cur.reindex_like(B_prev).fillna(0)
+
+B_mom_dollar = B_cur - B_prev
+with np.errstate(divide='ignore', invalid='ignore'):
+    B_mom_pct = np.where(B_prev == 0, np.nan, B_mom_dollar / B_prev)
+B_mom_pct = pd.DataFrame(B_mom_pct, index=B_prev.index, columns=B_prev.columns)
+
+# ---------- Nicely formatted views for notebook display ----------
+def fmt_currency(df_):
+    return df_.applymap(lambda x: "" if pd.isna(x) else f"${x:,.2f}")
+
+def fmt_percent(df_):
+    return df_.applymap(lambda x: "" if pd.isna(x) else f"{x:.2%}")
+
+A_mom_dollar_fmt = fmt_currency(A_mom_dollar)
+A_mom_pct_fmt     = fmt_percent(A_mom_pct)
+B_mom_dollar_fmt  = fmt_currency(B_mom_dollar)
+B_mom_pct_fmt     = fmt_percent(B_mom_pct)
+
+print(f"MoM matrices built for prior={prior_eom} → current={current_eom}\n")
+
+print("=== Matrix A ($ MoM): rows=GL_ACCOUNT_HIER_LEVEL_4, cols=BANK_CODE ===")
+display(A_mom_dollar_fmt.head(15))
+print("\n=== Matrix A (% MoM) ===")
+display(A_mom_pct_fmt.head(15))
+
+print("\n=== Matrix B ($ MoM): rows=BANK_CODE, cols=GL_ACCOUNT_HIER_LEVEL_4 ===")
+display(B_mom_dollar_fmt.head(15))
+print("\n=== Matrix B (% MoM) ===")
+display(B_mom_pct_fmt.head(15))
+
+# ---------- Save outputs ----------
+os.makedirs("outputs", exist_ok=True)
+A_mom_dollar.to_csv("outputs/mom_by_GL_L4__cols_BANK_CODE_dollar.csv")
+A_mom_pct.to_csv("outputs/mom_by_GL_L4__cols_BANK_CODE_pct.csv")
+B_mom_dollar.to_csv("outputs/mom_by_BANK_CODE__cols_GL_L4_dollar.csv")
+B_mom_pct.to_csv("outputs/mom_by_BANK_CODE__cols_GL_L4_pct.csv")
+
+print("\nSaved to ./outputs:")
+print(" - mom_by_GL_L4__cols_BANK_CODE_dollar.csv")
+print(" - mom_by_GL_L4__cols_BANK_CODE_pct.csv")
+print(" - mom_by_BANK_CODE__cols_GL_L4_dollar.csv")
+print(" - mom_by_BANK_CODE__cols_GL_L4_pct.csv")
