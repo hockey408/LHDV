@@ -1,3 +1,19 @@
+=LET(
+  t, tbl_Facility_Rollup,
+  owner, $B$2,
+  mv, $B$3,
+  f, FILTER(t, (t[Owner_For_Event]=owner)*(t[Movement_Type]=mv)*(t[Reviewable_Flag]>=1)),
+  rankMetric, IF(mv="Exit (ex-Auto)", ABS(INDEX(f[MoM_Delta],0)), INDEX(f[SSB_For_Event],0)),
+  sorted, SORTBY(f, rankMetric, -1),
+  TAKE(HSTACK(sorted, rankMetric), 30)
+)
+
+
+
+
+
+
+
 /* ================================== Query 1: MoM_Account_Detail (incl. negatives, charge-offs, status)
    UPDATED:
    - Movement_Type classified at FACILITY level (stamped onto all Account_Key rows)
