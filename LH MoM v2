@@ -1,4 +1,18 @@
 =LET(
+  top, Top30_Engine!A8#,
+  ownerSel, $B$2,
+  ownerCol, 4,
+  facCol, 2,
+  facs, FILTER(CHOOSECOLS(top, facCol), CHOOSECOLS(top, ownerCol)=ownerSel),
+  UNIQUE(facs)
+)
+
+
+
+
+
+
+=LET(
   top, A8#,
   facList, DROP(CHOOSECOLS(top,2),1),
   d, tbl_MoM_Account_Detail,
