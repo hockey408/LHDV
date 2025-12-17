@@ -2,6 +2,43 @@
   t, tbl_Facility_Rollup,
   hdr, tbl_Facility_Rollup[#Headers],
 
+  mv,    CHOOSECOLS(t, XMATCH("MOVEMENT_TYPE", hdr)),
+  own,   CHOOSECOLS(t, XMATCH("OWNER_FOR_EVENT", hdr)),
+  ssb,   CHOOSECOLS(t, XMATCH("Sum of SSB_FOR_EVENT", hdr)),
+  delta, CHOOSECOLS(t, XMATCH("Sum of MOM_DELTA", hdr)),
+  rev,   CHOOSECOLS(t, XMATCH("Max of REVIEWABLE_FLAG", hdr)),
+
+  ownerSel, $B$2,
+  mvSel,    $B$3,
+
+  keep, (own=ownerSel)*(mv=mvSel)*(rev>=1),
+
+  f,       IFERROR(FILTER(t, keep), ""),
+  f_ssb,   IFERROR(FILTER(ssb, keep), ""),
+  f_delta, IFERROR(FILTER(delta, keep), ""),
+
+  sortKey,
+    IF(TRIM(mvSel)="Exit (ex-Auto)",
+       ABS(IFERROR(--f_delta,0)),
+       IFERROR(--f_ssb,0)
+    ),
+
+  IF(f="",
+     "No matches for the selected Owner/Movement_Type (or Reviewable <> 1).",
+     TAKE(SORTBY(f, sortKey, -1), 30)
+  )
+)
+
+
+
+
+
+
+
+=LET(
+  t, tbl_Facility_Rollup,
+  hdr, tbl_Facility_Rollup[#Headers],
+
   bank,  CHOOSECOLS(t, XMATCH("BANK_FOR_EVENT", hdr)),
   fac,   CHOOSECOLS(t, XMATCH("FACILITY_FOR_EVENT", hdr)),
   mv,    CHOOSECOLS(t, XMATCH("MOVEMENT_TYPE", hdr)),
