@@ -1,4 +1,23 @@
 =LET(
+  top, A8#,
+  facList, DROP(CHOOSECOLS(top,2),1),
+  d, tbl_MoM_Account_Detail,
+  ownerSel, $B$2,
+  mvSel, "Downgrade IN (ex-Auto)",
+  out, FILTER(d,
+        (d[Owner_For_Event]=ownerSel)*
+        (d[Movement_Type]=mvSel)*
+        ISNUMBER(MATCH(d[Facility_For_Event], facList, 0))
+  ),
+  SORTBY(out, out[SSB_For_Event], -1)
+)
+
+
+
+
+
+
+=LET(
   t, tbl_Facility_Rollup,
   hdr, tbl_Facility_Rollup[#Headers],
 
