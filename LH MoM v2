@@ -1,5 +1,33 @@
 =LET(
   t, tbl_Facility_Rollup,
+  bank, CHOOSECOLS(t,1),
+  fac,  CHOOSECOLS(t,2),
+  own,  CHOOSECOLS(t,3),
+  mv,   CHOOSECOLS(t,4),
+  rev,  CHOOSECOLS(t,5),
+  ssb,  CHOOSECOLS(t,6),
+  delta,CHOOSECOLS(t,7),
+
+  ownerSel, $B$2,
+  mvSel, $B$3,
+
+  keep, (own=ownerSel)*(mv=mvSel)*(rev>=1),
+  f, FILTER(t, keep),
+
+  f_ssb,  FILTER(ssb, keep),
+  f_delta,FILTER(delta, keep),
+
+  rankMetric, IF(mvSel="Exit (ex-Auto)", ABS(f_delta), f_ssb),
+  sorted, SORTBY(f, rankMetric, -1),
+  TAKE(HSTACK(sorted, rankMetric), 30)
+)
+
+
+
+
+
+=LET(
+  t, tbl_Facility_Rollup,
   owner, $B$2,
   mv, $B$3,
   f, FILTER(t, (t[Owner_For_Event]=owner)*(t[Movement_Type]=mv)*(t[Reviewable_Flag]>=1)),
