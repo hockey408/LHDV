@@ -1,5 +1,38 @@
 =LET(
   t, tbl_Facility_Rollup,
+  hdr, tbl_Facility_Rollup[#Headers],
+
+  bank,  CHOOSECOLS(t, XMATCH("Bank_For_Event", hdr)),
+  fac,   CHOOSECOLS(t, XMATCH("Facility_For_Event", hdr)),
+  own,   CHOOSECOLS(t, XMATCH("Owner_For_Event", hdr)),
+  mv,    CHOOSECOLS(t, XMATCH("Movement_Type", hdr)),
+  rev,   CHOOSECOLS(t, XMATCH("Reviewable_Flag", hdr)),
+  ssb,   CHOOSECOLS(t, XMATCH("SSB_For_Event", hdr)),
+  delta, CHOOSECOLS(t, XMATCH("MoM_Delta", hdr)),
+
+  ownerSel, $B$2,
+  mvSel,    $B$3,
+
+  keep, (own=ownerSel)*(mv=mvSel)*(rev>=1),
+
+  f, IFERROR(FILTER(t, keep), ""),
+  f_ssb, IFERROR(FILTER(ssb, keep), ""),
+  f_delta, IFERROR(FILTER(delta, keep), ""),
+
+  rankMetric, IF(mvSel="Exit (ex-Auto)", ABS(f_delta), f_ssb),
+
+  IF(f="","No matches for the selected Owner/Movement_Type (or Reviewable_Flag not = 1).",
+     TAKE(SORTBY(HSTACK(f, rankMetric), rankMetric, -1), 30)
+  )
+)
+
+
+
+
+
+
+=LET(
+  t, tbl_Facility_Rollup,
   bank, CHOOSECOLS(t,1),
   fac,  CHOOSECOLS(t,2),
   own,  CHOOSECOLS(t,3),
