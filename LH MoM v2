@@ -1,3 +1,14 @@
+rankMetric,
+IF(
+  TRIM(mvSel)="Exit (ex-Auto)",
+  ABS(IFERROR(--f_delta,0)),
+  IFERROR(--f_ssb,0)
+),
+
+
+
+
+
 =LET(
   t, tbl_Facility_Rollup,
   hdr, tbl_Facility_Rollup[#Headers],
