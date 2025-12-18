@@ -1,6 +1,47 @@
 =LET(
   d, MoM_Account_Detail,
   hdr, MoM_Account_Detail[#Headers],
+  ownerSel, $B$2,
+
+  top, Top30_Engine!$A$7#,
+  facs, UNIQUE(FILTER(CHOOSECOLS(top,2), CHOOSECOLS(top,4)=ownerSel)),
+
+  facCol, CHOOSECOLS(d, XMATCH("FACILITY_FOR_EVENT", hdr)),
+  rows, IFERROR(FILTER(d, ISNUMBER(MATCH(facCol, facs, 0))), ""),
+
+  idxRaw, HSTACK(
+    XMATCH("CURR_ACCOUNT_NAME", hdr),
+    XMATCH("CIS_FOR_EVENT", hdr),
+    XMATCH("FACILITY_FOR_EVENT", hdr),
+    XMATCH("CURR_ACCOUNT_IDENTIFIER", hdr),
+    XMATCH("ACCOUNT_KEY", hdr),
+    XMATCH("CURR_BANK_CODE", hdr),
+    XMATCH("CURR_CSS", hdr),
+    XMATCH("CURR_GL_L4", hdr),
+    XMATCH("CURR_PROD5", hdr),
+    XMATCH("CURR_STATUS", hdr),
+    XMATCH("CURR_RBC", hdr),
+    XMATCH("SSB_FOR_EVENT", hdr),
+    XMATCH("CURR_GL_BALANCE", hdr)
+  ),
+  idx, FILTER(idxRaw, ISNUMBER(idxRaw)),
+
+  out, IF(rows="","No matching account rows.", CHOOSECOLS(rows, idx)),
+
+  ssbCol, IFERROR(CHOOSECOLS(rows, XMATCH("SSB_FOR_EVENT", hdr)), 0),
+
+  IF(rows="","No matching account rows.",
+     SORTBY(out, ssbCol, -1)
+  )
+)
+
+
+
+
+
+=LET(
+  d, MoM_Account_Detail,
+  hdr, MoM_Account_Detail[#Headers],
 
   ownerSel, $B$2,
 
