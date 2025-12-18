@@ -1,3 +1,97 @@
+let
+    Source = Excel.CurrentWorkbook(){[Name="MoM_Account_Detail"]}[Content],
+
+    // -----------------------------
+    // 1) Add "canonical" event columns
+    //    Rule: FOR_EVENT -> CURR -> PREV
+    // -----------------------------
+    AddFacility = Table.AddColumn(Source, "FACILITY_FOR_EVENT_STD", each
+        let
+            fe = try Text.From(Record.Field(_, "FACILITY_FOR_EVENT")) otherwise null,
+            ce = try Text.From(Record.Field(_, "CURR_FACILITY_ID")) otherwise null,
+            pe = try Text.From(Record.Field(_, "PREV_FACILITY_ID")) otherwise null
+        in
+            if fe <> null and Text.Trim(fe) <> "" then fe
+            else if ce <> null and Text.Trim(ce) <> "" then ce
+            else pe
+    , type text),
+
+    AddBank = Table.AddColumn(AddFacility, "BANK_FOR_EVENT_STD", each
+        let
+            fe = try Text.From(Record.Field(_, "BANK_FOR_EVENT")) otherwise null,
+            ce = try Text.From(Record.Field(_, "CURR_BANK")) otherwise null,
+            pe = try Text.From(Record.Field(_, "PREV_BANK")) otherwise null
+        in
+            if fe <> null and Text.Trim(fe) <> "" then fe
+            else if ce <> null and Text.Trim(ce) <> "" then ce
+            else pe
+    , type text),
+
+    AddOwner = Table.AddColumn(AddBank, "OWNER_FOR_EVENT_STD", each
+        let
+            fe = try Text.From(Record.Field(_, "OWNER_FOR_EVENT")) otherwise null,
+            ce = try Text.From(Record.Field(_, "CURR_OWNER")) otherwise null,
+            pe = try Text.From(Record.Field(_, "PREV_OWNER")) otherwise null
+        in
+            if fe <> null and Text.Trim(fe) <> "" then fe
+            else if ce <> null and Text.Trim(ce) <> "" then ce
+            else pe
+    , type text),
+
+    AddME = Table.AddColumn(AddOwner, "ME_DATE", each
+        let
+            me = try Date.From(Record.Field(_, "END_OF_MONTH_DATE")) otherwise null
+        in
+            me
+    , type date),
+
+    // -----------------------------
+    // 2) Keep only what we need (fast + stable)
+    //    IMPORTANT: adjust measure column names here if needed
+    // -----------------------------
+    KeepCols = Table.SelectColumns(AddME,{
+        "ME_DATE",
+        "BANK_FOR_EVENT_STD",
+        "FACILITY_FOR_EVENT_STD",
+        "OWNER_FOR_EVENT_STD",
+        "MOVEMENT_TYPE",
+
+        // measures (edit if your names differ)
+        "SSB_FOR_EVENT",
+        "MOM_DELTA",
+        "REVIEWABLE_FLAG"
+    }),
+
+    Types = Table.TransformColumnTypes(KeepCols,{
+        {"ME_DATE", type date},
+        {"BANK_FOR_EVENT_STD", type text},
+        {"FACILITY_FOR_EVENT_STD", type text},
+        {"OWNER_FOR_EVENT_STD", type text},
+        {"MOVEMENT_TYPE", type text},
+        {"SSB_FOR_EVENT", type number},
+        {"MOM_DELTA", type number},
+        {"REVIEWABLE_FLAG", Int64.Type}
+    }),
+
+    // -----------------------------
+    // 3) Roll up to facility level for Top30 + Waterfall
+    // -----------------------------
+    Grouped = Table.Group(Types,
+        {"ME_DATE","BANK_FOR_EVENT_STD","FACILITY_FOR_EVENT_STD","OWNER_FOR_EVENT_STD","MOVEMENT_TYPE"},
+        {
+            {"SSB_FOR_EVENT_SUM", each List.Sum([SSB_FOR_EVENT]), type number},
+            {"MOM_DELTA_SUM", each List.Sum([MOM_DELTA]), type number},
+            {"REVIEWABLE_FLAG_MAX", each List.Max([REVIEWABLE_FLAG]), Int64.Type}
+        }
+    )
+
+in
+    Grouped
+
+
+
+
+
 =SUMIFS(
   tbl_Facility_Rollup[Sum of SSB_FOR_EVENT],
   tbl_Facility_Rollup[BANK_FOR_EVENT], "L-FCB",
