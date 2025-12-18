@@ -1,3 +1,29 @@
+=SUMIFS(
+  tbl_Facility_Rollup[Sum of SSB_FOR_EVENT],
+  tbl_Facility_Rollup[BANK_FOR_EVENT], "L-FCB",
+  tbl_Facility_Rollup[Max of REVIEWABLE_FLAG], 1
+)
+
+
+=SUMIFS(
+  tbl_Facility_Rollup[Sum of MOM_DELTA],
+  tbl_Facility_Rollup[BANK_FOR_EVENT], "L-FCB",
+  tbl_Facility_Rollup[MOVEMENT_TYPE], "Downgrade IN (ex-Auto)",
+  tbl_Facility_Rollup[Max of REVIEWABLE_FLAG], 1
+)
+
+=-SUMIFS(
+  tbl_Facility_Rollup[Sum of MOM_DELTA],
+  tbl_Facility_Rollup[BANK_FOR_EVENT], "L-FCB",
+  tbl_Facility_Rollup[MOVEMENT_TYPE], "Exit (ex-Auto)",
+  tbl_Facility_Rollup[Max of REVIEWABLE_FLAG], 1
+)
+
+
+
+
+
+
 =IFERROR(
   SUMIFS(
     tbl_Facility_Rollup[Sum of SSB_FOR_EVENT],
