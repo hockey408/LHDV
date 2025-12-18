@@ -1,3 +1,28 @@
+=IFERROR(
+  SUMIFS(
+    tbl_Facility_Rollup[Sum of SSB_FOR_EVENT],
+    tbl_Facility_Rollup[OWNER_FOR_EVENT], $B$2,
+    tbl_Facility_Rollup[MOVEMENT_TYPE], "Downgrade IN (ex-Auto)",
+    tbl_Facility_Rollup[Max of REVIEWABLE_FLAG], 1
+  ),
+  0
+)
+
+
+=IFERROR(
+  SUMIFS(
+    tbl_Facility_Rollup[Sum of SSB_FOR_EVENT],
+    tbl_Facility_Rollup[OWNER_FOR_EVENT], $B$2,
+    tbl_Facility_Rollup[MOVEMENT_TYPE], "Exit (ex-Auto)",
+    tbl_Facility_Rollup[Max of REVIEWABLE_FLAG], 1
+  ),
+  0
+)
+
+
+
+
+
 BANK_FOR_EVENT
 FACILITY_FOR_EVENT
 MOVEMENT_TYPE
