@@ -1,3 +1,13 @@
+=SUMIFS(
+    tbl_Facility_Rollup[Reviewable_SSB],
+    tbl_Facility_Rollup[OWNER_FOR_EVENT], $B$2,
+    tbl_Facility_Rollup[Movement_Type], "Downgrade IN (ex-Auto)"
+)
+
+
+
+
+
 =LET(
   owner, $B$2,
   mt, "Exit (ex-Auto)",
