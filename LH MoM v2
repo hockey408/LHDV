@@ -1,3 +1,49 @@
+=LET(
+  t, tbl_Facility_Rollup_Latest,
+  mt, $B$2,
+  own, $B$3,
+  bk, $B$4,
+  topN, $B$6,
+  onlyRev, TRUE,
+
+  base, FILTER(
+    t,
+    (t[MOVEMENT_TYPE]=mt) *
+    (IF(onlyRev, t[Reviewable_Flag_Max]=1, TRUE)) *
+    (IF(own="ALL", TRUE, t[OWNER_EVENT]=own)) *
+    (IF(bk="ALL", TRUE, t[BANK_EVENT]=bk))
+  ),
+
+  // ranking metric:
+  // - Exit: rank by ABS(delta)
+  // - Downgrade IN: rank by delta (positive)
+  // default: ABS(delta)
+  metric, IF(
+    mt="Exit (ex-Auto)",
+    ABS(CHOOSECOLS(base, XMATCH("MoM_Delta_SUM", t[#Headers]))),
+    ABS(CHOOSECOLS(base, XMATCH("MoM_Delta_SUM", t[#Headers])))
+  ),
+
+  sorted, SORTBY(base, metric, -1),
+
+  out, HSTACK(
+    TAKE(CHOOSECOLS(sorted, XMATCH("FACILITY_EVENT", t[#Headers])), topN),
+    TAKE(CHOOSECOLS(sorted, XMATCH("OWNER_EVENT", t[#Headers])), topN),
+    TAKE(CHOOSECOLS(sorted, XMATCH("BANK_EVENT", t[#Headers])), topN),
+    TAKE(CHOOSECOLS(sorted, XMATCH("Prev_SSB_SUM", t[#Headers])), topN),
+    TAKE(CHOOSECOLS(sorted, XMATCH("Curr_SSB_SUM", t[#Headers])), topN),
+    TAKE(CHOOSECOLS(sorted, XMATCH("MoM_Delta_SUM", t[#Headers])), topN),
+    TAKE(metric, topN)
+  ),
+
+  out
+)
+
+
+
+
+
+
 let
     Source = Excel.CurrentWorkbook(){[Name="MoM_Account_Detail"]}[Content]
 in
