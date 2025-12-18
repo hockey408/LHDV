@@ -4,6 +4,50 @@
   ownerSel, $B$2,
 
   top, Top30_Engine!$A$7#,
+  facs, UNIQUE(FILTER(CHOOSECOLS(top,2), CHOOSECOLS(top,4)=ownerSel, "")),
+
+  facCol, CHOOSECOLS(d, IFNA(XMATCH("FACILITY_FOR_EVENT", hdr), 0)),
+  rows, IFERROR(FILTER(d, ISNUMBER(MATCH(facCol, facs, 0))), TAKE(d,0)),
+
+  idxRaw, HSTACK(
+    IFNA(XMATCH("CURR_ACCOUNT_NAME", hdr), 0),
+    IFNA(XMATCH("CIS_FOR_EVENT", hdr), 0),
+    IFNA(XMATCH("FACILITY_FOR_EVENT", hdr), 0),
+    IFNA(XMATCH("CURR_ACCOUNT_IDENTIFIER", hdr), 0),
+    IFNA(XMATCH("ACCOUNT_KEY", hdr), 0),
+    IFNA(XMATCH("CURR_BANK_CODE", hdr), 0),
+    IFNA(XMATCH("CURR_CSS", hdr), 0),
+    IFNA(XMATCH("CURR_GL_L4", hdr), 0),
+    IFNA(XMATCH("CURR_PROD5", hdr), 0),
+    IFNA(XMATCH("CURR_STATUS", hdr), 0),
+    IFNA(XMATCH("CURR_RBC", hdr), 0),
+    IFNA(XMATCH("SSB_FOR_EVENT", hdr), 0),
+    IFNA(XMATCH("CURR_GL_BALANCE", hdr), 0)
+  ),
+  idx, TOROW(FILTER(idxRaw, idxRaw>0)),
+
+  out, CHOOSECOLS(rows, idx),
+
+  ssbIdx, IFNA(XMATCH("SSB_FOR_EVENT", hdr), 0),
+  sortKey, IF(ssbIdx=0, 0, IFERROR(--CHOOSECOLS(rows, ssbIdx), 0)),
+
+  IF(ROWS(rows)=0,
+     "No matching account rows.",
+     SORTBY(out, sortKey, -1)
+  )
+)
+
+
+
+
+
+
+=LET(
+  d, MoM_Account_Detail,
+  hdr, MoM_Account_Detail[#Headers],
+  ownerSel, $B$2,
+
+  top, Top30_Engine!$A$7#,
   facs, UNIQUE(FILTER(CHOOSECOLS(top,2), CHOOSECOLS(top,4)=ownerSel)),
 
   facCol, CHOOSECOLS(d, XMATCH("FACILITY_FOR_EVENT", hdr)),
