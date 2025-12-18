@@ -1,4 +1,40 @@
 =LET(
+  t, tbl_Facility_Rollup_All,
+  me, $B$1,
+  mt, $B$2,
+  own, $B$3,
+  bk, $B$4,
+  topN, $B$6,
+
+  base, FILTER(
+    t,
+    (t[ME_DATE]=me) *
+    (t[MOVEMENT_TYPE]=mt) *
+    (t[Reviewable_Flag_Max]=1) *
+    (IF(own="ALL", TRUE, t[OWNER_EVENT]=own)) *
+    (IF(bk="ALL", TRUE, t[BANK_EVENT]=bk))
+  ),
+
+  metric, IF(mt="Exit (ex-Auto)", ABS(base[MoM_Delta_SUM]), ABS(base[MoM_Delta_SUM])),
+  sorted, SORTBY(base, metric, -1),
+
+  HSTACK(
+    TAKE(sorted[FACILITY_EVENT], topN),
+    TAKE(sorted[OWNER_EVENT], topN),
+    TAKE(sorted[BANK_EVENT], topN),
+    TAKE(sorted[Prev_SSB_SUM], topN),
+    TAKE(sorted[Curr_SSB_SUM], topN),
+    TAKE(sorted[MoM_Delta_SUM], topN),
+    TAKE(metric, topN)
+  )
+)
+
+
+
+
+
+
+=LET(
   t, tbl_Facility_Rollup_Latest,
   mt, $B$2,
   own, $B$3,
