@@ -1,3 +1,25 @@
+=SUMIFS(
+  MoM_Account_Detail[SSB_FOR_EVENT],
+  MoM_Account_Detail[REVIEWABLE_FLAG], 1,
+  MoM_Account_Detail[MOVEMENT_TYPE], "Exit (ex-Auto)",
+  MoM_Account_Detail[CURR_EOM], Top30_Engine!$B$43
+)
+
+
+=SUMIFS(
+  MoM_Account_Detail[SSB_FOR_EVENT],
+  MoM_Account_Detail[REVIEWABLE_FLAG], 1,
+  MoM_Account_Detail[MOVEMENT_TYPE], "Downgrade IN (ex-Auto)",
+  MoM_Account_Detail[CURR_EOM], Top30_Engine!$B$43
+)
+
+
+
+
+
+
+
+
 =LET(
   me, Top30_Engine!$B$43,
   topBlock, Top30_Engine!$A$52#,
