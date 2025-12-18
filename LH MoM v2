@@ -1,4 +1,56 @@
-      MoM_Account_Detail[CURR_ACCOUNT_NAME],
+
+=LET(
+  d, MoM_Account_Detail,
+  ownerSel, $B$2,
+
+  top, Top30_Engine!$A$8#,
+  facs, UNIQUE(FILTER(CHOOSECOLS(top,2), CHOOSECOLS(top,4)=ownerSel)),
+
+  rows, IFERROR(
+          FILTER(d,
+            (d[OWNER_FOR_EVENT]=ownerSel)*
+            (d[MOVEMENT_TYPE]="Downgrade IN (ex-Auto)")*
+            ISNUMBER(MATCH(d[FACILITY_FOR_EVENT], facs, 0))
+          ),
+          ""
+        ),
+
+  out, CHOOSECOLS(
+        rows,
+        XMATCH("CURR_ACCOUNT_NAME", d[#Headers]),
+        XMATCH("CIS_FOR_EVENT", d[#Headers]),
+        XMATCH("FACILITY_FOR_EVENT", d[#Headers]),
+        XMATCH("CURR_ACCOUNT_IDENTIFIER", d[#Headers]),
+        XMATCH("ACCOUNT_KEY", d[#Headers]),
+        XMATCH("CURR_BANK_CODE", d[#Headers]),
+        XMATCH("CURR_CSS", d[#Headers]),
+        XMATCH("CURR_GL_L4", d[#Headers]),
+        XMATCH("CURR_PROD5", d[#Headers]),
+        XMATCH("CURR_STATUS", d[#Headers]),
+        XMATCH("CURR_RBC", d[#Headers]),
+        XMATCH("SSB_FOR_EVENT", d[#Headers]),
+        XMATCH("CURR_GL_BALANCE", d[#Headers])
+      ),
+
+  IF(rows="","No matching account rows.",
+     SORTBY(out, CHOOSECOLS(out,12), -1)
+  )
+)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+MoM_Account_Detail[CURR_ACCOUNT_NAME],
       MoM_Account_Detail[CIS_FOR_EVENT],
       MoM_Account_Detail[FACILITY_FOR_EVENT],
       MoM_Account_Detail[CURR_ACCOUNT_IDENTIFIER],
