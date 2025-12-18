@@ -5,6 +5,33 @@
   mv,    CHOOSECOLS(t, XMATCH("MOVEMENT_TYPE", hdr)),
   own,   CHOOSECOLS(t, XMATCH("OWNER_FOR_EVENT", hdr)),
   ssb,   CHOOSECOLS(t, XMATCH("Sum of SSB_FOR_EVENT", hdr)),
+  rev,   CHOOSECOLS(t, XMATCH("Max of REVIEWABLE_FLAG", hdr)),
+
+  ownerSel, $B$2,
+  mvSel, "Downgrade IN (ex-Auto)",
+
+  keep, (own=ownerSel)*(mv=mvSel)*(rev>=1),
+
+  f,     FILTER(t, keep),
+  f_ssb, FILTER(ssb, keep),
+
+  sorted, SORTBY(f, IFERROR(--f_ssb,0), -1),
+  n, MIN(30, ROWS(sorted)),
+
+  TAKE(sorted, n)
+)
+
+
+
+
+
+=LET(
+  t, tbl_Facility_Rollup,
+  hdr, tbl_Facility_Rollup[#Headers],
+
+  mv,    CHOOSECOLS(t, XMATCH("MOVEMENT_TYPE", hdr)),
+  own,   CHOOSECOLS(t, XMATCH("OWNER_FOR_EVENT", hdr)),
+  ssb,   CHOOSECOLS(t, XMATCH("Sum of SSB_FOR_EVENT", hdr)),
   delta, CHOOSECOLS(t, XMATCH("Sum of MOM_DELTA", hdr)),
   rev,   CHOOSECOLS(t, XMATCH("Max of REVIEWABLE_FLAG", hdr)),
 
