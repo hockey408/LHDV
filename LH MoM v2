@@ -1,4 +1,38 @@
 =LET(
+  me, $B$1,
+  mt, $B$2,
+  own, $B$3,
+  bk, $B$4,
+  topN, $B$6,
+
+  crit,
+    (tbl_Facility_Rollup_All[ME_DATE]=me) *
+    (tbl_Facility_Rollup_All[MOVEMENT_TYPE]=mt) *
+    (tbl_Facility_Rollup_All[Reviewable_Flag_Max]=1) *
+    IF(own="ALL", 1, tbl_Facility_Rollup_All[OWNER_EVENT]=own) *
+    IF(bk="ALL", 1, tbl_Facility_Rollup_All[BANK_EVENT]=bk),
+
+  fac,   FILTER(tbl_Facility_Rollup_All[FACILITY_EVENT], crit),
+  ownc,  FILTER(tbl_Facility_Rollup_All[OWNER_EVENT], crit),
+  bank,  FILTER(tbl_Facility_Rollup_All[BANK_EVENT], crit),
+  prev,  FILTER(tbl_Facility_Rollup_All[Prev_SSB_SUM], crit),
+  curr,  FILTER(tbl_Facility_Rollup_All[Curr_SSB_SUM], crit),
+  delta, FILTER(tbl_Facility_Rollup_All[MoM_Delta_SUM], crit),
+
+  metric, IF(mt="Downgrade IN (ex-Auto)", delta, ABS(delta)),
+
+  data, HSTACK(fac, ownc, bank, prev, curr, delta, metric),
+  sorted, SORTBY(data, metric, -1),
+
+  TAKE(sorted, MIN(topN, ROWS(sorted)))
+)
+
+Facility | Owner | Bank | Prev_SSB | Curr_SSB | MoM_Delta | Magnitude
+
+
+
+
+=LET(
   t, tbl_Facility_Rollup_All,
   me, $B$1,
   mt, $B$2,
