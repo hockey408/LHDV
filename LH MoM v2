@@ -1,3 +1,26 @@
+This is a Player Snapshot — not a stat sheet.
+
+Traditional hockey stats tell you what happened.
+They rarely help explain what to do next.
+
+The IceStat Player Snapshot is designed to give coaches:
+• A clear, blended view of player impact
+• Trend context over time
+• Supporting detail when deeper explanation is needed
+
+Not more numbers —
+but a clearer picture to support real coaching decisions.
+
+This example uses synthetic data to show how IceStat translates tracked events into coaching context.
+
+Team context and workflow matter just as much — more on that soon.
+
+
+
+
+
+
+
 let
     Source = #"MoM_Account_Detail",
 
