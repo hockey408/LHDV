@@ -1,3 +1,66 @@
+=LET(
+  me, Top30_Engine!$B$1,
+  owner, $B$2,
+  mt, "Exit (ex-Auto)",
+
+  facs, FILTER(Top30_Engine!A7:A10000, (Top30_Engine!A7:A10000<>"")*(Top30_Engine!B7:B10000=owner)),
+
+  crit,
+    (MoM_Account_Detail[CURR_EOM]=me) *
+    (MoM_Account_Detail[OWNER_FOR_EVENT]=owner) *
+    (MoM_Account_Detail[MOVEMENT_TYPE]=mt) *
+    (MoM_Account_Detail[REVIEWABLE_FLAG]=1) *
+    ISNUMBER(MATCH(MoM_Account_Detail[FACILITY_FOR_EVENT], facs, 0)),
+
+  acct_name, FILTER(MoM_Account_Detail[ACCOUNT_NAME_FOR_EVENT], crit),
+  cis,       FILTER(MoM_Account_Detail[CIS_FOR_EVENT], crit),
+  fac,       FILTER(MoM_Account_Detail[FACILITY_FOR_EVENT], crit),
+  acct_id_c, FILTER(MoM_Account_Detail[CURR_ACCOUNT_IDENTIFIER], crit),
+  acct_id_p, FILTER(MoM_Account_Detail[PREV_ACCOUNT_IDENTIFIER], crit),
+  acct_key,  FILTER(MoM_Account_Detail[ACCOUNT_KEY], crit),
+
+  bank,      FILTER(MoM_Account_Detail[BANK_FOR_EVENT], crit),
+
+  css_c,     FILTER(MoM_Account_Detail[CURR_CSS], crit),
+  css_p,     FILTER(MoM_Account_Detail[PREV_CSS], crit),
+
+  gl4_c,     FILTER(MoM_Account_Detail[CURR_GL_L4], crit),
+  gl4_p,     FILTER(MoM_Account_Detail[PREV_GL_L4], crit),
+
+  prod5_c,   FILTER(MoM_Account_Detail[CURR_PROD5], crit),
+  prod5_p,   FILTER(MoM_Account_Detail[PREV_PROD5], crit),
+
+  status_c,  FILTER(MoM_Account_Detail[CURR_STATUS], crit),
+  status_p,  FILTER(MoM_Account_Detail[PREV_STATUS], crit),
+
+  rbc_c,     FILTER(MoM_Account_Detail[CURR_RBC], crit),
+  rbc_p,     FILTER(MoM_Account_Detail[PREV_RBC], crit),
+
+  ssb_evt,   FILTER(MoM_Account_Detail[SSB_FOR_EVENT], crit),
+
+  glb_c,     FILTER(MoM_Account_Detail[CURR_GL_BALANCE], crit),
+  glb_p,     FILTER(MoM_Account_Detail[PREV_GL_BALANCE], crit),
+
+  acct_id,   IF(acct_id_c<>"", acct_id_c, acct_id_p),
+  css,       IF(css_c<>"", css_c, css_p),
+  gl4,       IF(gl4_c<>"", gl4_c, gl4_p),
+  prod5,     IF(prod5_c<>"", prod5_c, prod5_p),
+  status,    IF(status_c<>"", status_c, status_p),
+  rbc,       IF(rbc_c<>"", rbc_c, rbc_p),
+  glb,       IF(glb_c<>"", glb_c, glb_p),
+
+  headers, {"ACCOUNT_NAME","CIS_CUSTOMER_NUMBER","FACILITY_ID","ACCOUNT_IDENTIFIER","ACCOUNT_KEY","BANK_CODE","CONTRACT_SOURCE_SYSTEM","GL_ACCOUNT_HIER_LEVEL_4","PROD_HIER_LEVEL_5","STATUS_CODE","RBC_CODE","SOURCE_SYSTEM_BALANCE","GL_BALANCE"},
+
+  data, HSTACK(acct_name,cis,fac,acct_id,acct_key,bank,css,gl4,prod5,status,rbc,ssb_evt,glb),
+
+  VSTACK(headers, data)
+)
+
+
+
+
+
+
 Here are the columns I want to show for both top30 facilities' account level detail categories (Downgrade IN (ex-Auto) and Exit (ex-Auto)) within the Top30_Owner tabs. You may need to wire the formulas to pull the correct corresponding columns from MoM_Account_Detail.
 
 ACCOUNT_NAME
