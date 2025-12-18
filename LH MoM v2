@@ -12,6 +12,74 @@
     (MoM_Account_Detail[REVIEWABLE_FLAG]=1) *
     ISNUMBER(MATCH(MoM_Account_Detail[FACILITY_FOR_EVENT], facs, 0)),
 
+  base, IFERROR(FILTER(MoM_Account_Detail, crit), ""),
+
+  h, MoM_Account_Detail[#Headers],
+
+  acct_name, CHOOSECOLS(base, XMATCH("ACCOUNT_NAME_FOR_EVENT", h)),
+  cis,       CHOOSECOLS(base, XMATCH("CIS_FOR_EVENT", h)),
+  fac,       CHOOSECOLS(base, XMATCH("FACILITY_FOR_EVENT", h)),
+
+  acct_id_c, CHOOSECOLS(base, XMATCH("CURR_ACCOUNT_IDENTIFIER", h)),
+  acct_id_p, CHOOSECOLS(base, XMATCH("PREV_ACCOUNT_IDENTIFIER", h)),
+  acct_id,   IF(acct_id_c<>"", acct_id_c, acct_id_p),
+
+  acct_key,  CHOOSECOLS(base, XMATCH("ACCOUNT_KEY", h)),
+
+  bank_evt,  CHOOSECOLS(base, XMATCH("BANK_FOR_EVENT", h)),
+  bank_c,    CHOOSECOLS(base, XMATCH("CURR_BANK_CODE", h)),
+  bank_p,    CHOOSECOLS(base, XMATCH("PREV_BANK_CODE", h)),
+  bank,      IF(bank_evt<>"", bank_evt, IF(bank_c<>"", bank_c, bank_p)),
+
+  css_c,     CHOOSECOLS(base, XMATCH("CURR_CSS", h)),
+  css_p,     CHOOSECOLS(base, XMATCH("PREV_CSS", h)),
+  css,       IF(css_c<>"", css_c, css_p),
+
+  gl4_c,     CHOOSECOLS(base, XMATCH("CURR_GL_L4", h)),
+  gl4_p,     CHOOSECOLS(base, XMATCH("PREV_GL_L4", h)),
+  gl4,       IF(gl4_c<>"", gl4_c, gl4_p),
+
+  prod5_c,   CHOOSECOLS(base, XMATCH("CURR_PROD5", h)),
+  prod5_p,   CHOOSECOLS(base, XMATCH("PREV_PROD5", h)),
+  prod5,     IF(prod5_c<>"", prod5_c, prod5_p),
+
+  status_c,  CHOOSECOLS(base, XMATCH("CURR_STATUS", h)),
+  status_p,  CHOOSECOLS(base, XMATCH("PREV_STATUS", h)),
+  status,    IF(status_c<>"", status_c, status_p),
+
+  rbc_c,     CHOOSECOLS(base, XMATCH("CURR_RBC", h)),
+  rbc_p,     CHOOSECOLS(base, XMATCH("PREV_RBC", h)),
+  rbc,       IF(rbc_c<>"", rbc_c, rbc_p),
+
+  ssb_evt,   CHOOSECOLS(base, XMATCH("SSB_FOR_EVENT", h)),
+
+  glb_c,     CHOOSECOLS(base, XMATCH("CURR_GL_BALANCE", h)),
+  glb_p,     CHOOSECOLS(base, XMATCH("PREV_GL_BALANCE", h)),
+  glb,       IF(glb_c<>"", glb_c, glb_p),
+
+  IF(base="","",
+    HSTACK(acct_name, cis, fac, acct_id, acct_key, bank, css, gl4, prod5, status, rbc, ssb_evt, glb)
+  )
+)
+
+
+
+
+
+=LET(
+  me, Top30_Engine!$B$1,
+  owner, $B$2,
+  mt, "Exit (ex-Auto)",
+
+  facs, FILTER(Top30_Engine!A7:A10000, (Top30_Engine!A7:A10000<>"")*(Top30_Engine!B7:B10000=owner)),
+
+  crit,
+    (MoM_Account_Detail[CURR_EOM]=me) *
+    (MoM_Account_Detail[OWNER_FOR_EVENT]=owner) *
+    (MoM_Account_Detail[MOVEMENT_TYPE]=mt) *
+    (MoM_Account_Detail[REVIEWABLE_FLAG]=1) *
+    ISNUMBER(MATCH(MoM_Account_Detail[FACILITY_FOR_EVENT], facs, 0)),
+
   acct_name, FILTER(MoM_Account_Detail[ACCOUNT_NAME_FOR_EVENT], crit),
   cis,       FILTER(MoM_Account_Detail[CIS_FOR_EVENT], crit),
   fac,       FILTER(MoM_Account_Detail[FACILITY_FOR_EVENT], crit),
