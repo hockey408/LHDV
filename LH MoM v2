@@ -1,3 +1,22 @@
+      MoM_Account_Detail[CURR_ACCOUNT_NAME],
+      MoM_Account_Detail[CIS_FOR_EVENT],
+      MoM_Account_Detail[FACILITY_FOR_EVENT],
+      MoM_Account_Detail[CURR_ACCOUNT_IDENTIFIER],
+      MoM_Account_Detail[ACCOUNT_KEY],
+      MoM_Account_Detail[CURR_BANK_CODE],
+      MoM_Account_Detail[CURR_CSS],
+      MoM_Account_Detail[CURR_GL_L4],
+      MoM_Account_Detail[CURR_PROD5],
+      MoM_Account_Detail[CURR_STATUS],
+      MoM_Account_Detail[CURR_RBC],
+      MoM_Account_Detail[SSB_FOR_EVENT],
+      MoM_Account_Detail[CURR_GL_BALANCE]
+
+
+
+
+
+
 =LET(
   me, Top30_Engine!$B$43,
   topBlock, Top30_Engine!$A$52#,
