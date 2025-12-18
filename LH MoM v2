@@ -1,3 +1,12 @@
+let
+    Source = Excel.CurrentWorkbook(){[Name="MoM_Account_Detail"]}[Content]
+in
+    Source
+
+
+
+
+
 This is a Player Snapshot — not a stat sheet.
 
 Traditional hockey stats tell you what happened.
