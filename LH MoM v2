@@ -1,3 +1,15 @@
+BANK_FOR_EVENT
+FACILITY_FOR_EVENT
+MOVEMENT_TYPE
+OWNER_FOR_EVENT
+Sum of SSB_FOR_EVENT
+Sum of MOM_DELTA
+Max of REVIEWABLE_FLAG
+
+
+
+
+
 =SUMIFS(
     tbl_Facility_Rollup[Reviewable_SSB],
     tbl_Facility_Rollup[OWNER_FOR_EVENT], $B$2,
