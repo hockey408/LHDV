@@ -1,3 +1,55 @@
+=LET(
+  me, Top30_Engine!$B$43,
+  IFERROR(SUMIFS(
+    tbl_Facility_Rollup_All[PREV_SSB_SUM],
+    tbl_Facility_Rollup_All[ME_DATE], me,
+    tbl_Facility_Rollup_All[BANK_EVENT], C$1,
+    tbl_Facility_Rollup_All[Reviewable_Flag_Max], 1
+  ),0)
+)
+
+
+=LET(
+  me, Top30_Engine!$B$43,
+  IFERROR(SUMIFS(
+    tbl_Facility_Rollup_All[MOM_DELTA_SUM],
+    tbl_Facility_Rollup_All[ME_DATE], me,
+    tbl_Facility_Rollup_All[BANK_EVENT], C$1,
+    tbl_Facility_Rollup_All[MOVEMENT_TYPE], "Downgrade IN (ex-Auto)",
+    tbl_Facility_Rollup_All[Reviewable_Flag_Max], 1
+  ),0)
+)
+
+=LET(
+  me, Top30_Engine!$B$43,
+  -ABS(IFERROR(SUMIFS(
+    tbl_Facility_Rollup_All[MOM_DELTA_SUM],
+    tbl_Facility_Rollup_All[ME_DATE], me,
+    tbl_Facility_Rollup_All[BANK_EVENT], C$1,
+    tbl_Facility_Rollup_All[MOVEMENT_TYPE], "Exit (ex-Auto)",
+    tbl_Facility_Rollup_All[Reviewable_Flag_Max], 1
+  ),0))
+)
+
+=LET(
+  me, Top30_Engine!$B$43,
+  IFERROR(SUMIFS(
+    tbl_Facility_Rollup_All[MOM_DELTA_SUM],
+    tbl_Facility_Rollup_All[ME_DATE], me,
+    tbl_Facility_Rollup_All[BANK_EVENT], C$1,
+    tbl_Facility_Rollup_All[MOVEMENT_TYPE], "Persisting Balance Changes (ex-Auto)",
+    tbl_Facility_Rollup_All[Reviewable_Flag_Max], 1
+  ),0)
+)
+
+
+
+
+
+
+
+
+
 =SUMIFS(
   tbl_Facility_Rollup_All[PREV_SSB_SUM],
   tbl_Facility_Rollup_All[ME_DATE], Top30_Engine!$B$43,
