@@ -15,6 +15,35 @@
   acct_name, FILTER(MoM_Account_Detail[ACCOUNT_NAME_FOR_EVENT], crit),
   cis,       FILTER(MoM_Account_Detail[CIS_FOR_EVENT], crit),
   fac,       FILTER(MoM_Account_Detail[FACILITY_FOR_EVENT], crit),
+  acct_key,  FILTER(MoM_Account_Detail[ACCOUNT_KEY], crit),
+  bank,      FILTER(MoM_Account_Detail[BANK_FOR_EVENT], crit),
+  ssb_evt,   FILTER(MoM_Account_Detail[SSB_FOR_EVENT], crit),
+
+  HSTACK(acct_name, cis, fac, acct_key, bank, ssb_evt)
+)
+
+
+
+
+
+
+=LET(
+  me, Top30_Engine!$B$1,
+  owner, $B$2,
+  mt, "Exit (ex-Auto)",
+
+  facs, FILTER(Top30_Engine!A7:A10000, (Top30_Engine!A7:A10000<>"")*(Top30_Engine!B7:B10000=owner)),
+
+  crit,
+    (MoM_Account_Detail[CURR_EOM]=me) *
+    (MoM_Account_Detail[OWNER_FOR_EVENT]=owner) *
+    (MoM_Account_Detail[MOVEMENT_TYPE]=mt) *
+    (MoM_Account_Detail[REVIEWABLE_FLAG]=1) *
+    ISNUMBER(MATCH(MoM_Account_Detail[FACILITY_FOR_EVENT], facs, 0)),
+
+  acct_name, FILTER(MoM_Account_Detail[ACCOUNT_NAME_FOR_EVENT], crit),
+  cis,       FILTER(MoM_Account_Detail[CIS_FOR_EVENT], crit),
+  fac,       FILTER(MoM_Account_Detail[FACILITY_FOR_EVENT], crit),
   acct_id_c, FILTER(MoM_Account_Detail[CURR_ACCOUNT_IDENTIFIER], crit),
   acct_id_p, FILTER(MoM_Account_Detail[PREV_ACCOUNT_IDENTIFIER], crit),
   acct_key,  FILTER(MoM_Account_Detail[ACCOUNT_KEY], crit),
