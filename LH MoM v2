@@ -1,4 +1,61 @@
 =LET(
+  me, Top30_Engine!$B$1,
+  topBlock, $R$50#,
+  topFacilities, INDEX(topBlock,,3),
+
+  acct_identifier, IF(MoM_Account_Detail[CURR_ACCOUNT_IDENTIFIER]<>"",
+                      MoM_Account_Detail[CURR_ACCOUNT_IDENTIFIER],
+                      MoM_Account_Detail[PREV_ACCOUNT_IDENTIFIER]),
+
+  bank_code, IF(MoM_Account_Detail[BANK_FOR_EVENT]<>"",
+                MoM_Account_Detail[BANK_FOR_EVENT],
+                IF(MoM_Account_Detail[CURR_BANK_CODE]<>"",
+                   MoM_Account_Detail[CURR_BANK_CODE],
+                   MoM_Account_Detail[PREV_BANK_CODE])),
+
+  css, IF(MoM_Account_Detail[CURR_CSS]<>"", MoM_Account_Detail[CURR_CSS], MoM_Account_Detail[PREV_CSS]),
+  gl4, IF(MoM_Account_Detail[CURR_GL_L4]<>"", MoM_Account_Detail[CURR_GL_L4], MoM_Account_Detail[PREV_GL_L4]),
+  prod5, IF(MoM_Account_Detail[CURR_PROD5]<>"", MoM_Account_Detail[CURR_PROD5], MoM_Account_Detail[PREV_PROD5]),
+  status, IF(MoM_Account_Detail[CURR_STATUS]<>"", MoM_Account_Detail[CURR_STATUS], MoM_Account_Detail[PREV_STATUS]),
+  rbc, IF(MoM_Account_Detail[CURR_RBC]<>"", MoM_Account_Detail[CURR_RBC], MoM_Account_Detail[PREV_RBC]),
+  gl_balance, IF(MoM_Account_Detail[CURR_GL_BALANCE]<>"", MoM_Account_Detail[CURR_GL_BALANCE], MoM_Account_Detail[PREV_GL_BALANCE]),
+
+  detailCols,
+    CHOOSE(
+      {1,2,3,4,5,6,7,8,9,10,11,12,13},
+      MoM_Account_Detail[ACCOUNT_NAME_FOR_EVENT],   /* ACCOUNT_NAME */
+      MoM_Account_Detail[CIS_FOR_EVENT],            /* CIS_CUSTOMER_NUMBER */
+      MoM_Account_Detail[FACILITY_FOR_EVENT],       /* FACILITY_ID */
+      acct_identifier,                              /* ACCOUNT_IDENTIFIER */
+      MoM_Account_Detail[ACCOUNT_KEY],              /* ACCOUNT_KEY */
+      bank_code,                                    /* BANK_CODE */
+      css,                                          /* CONTRACT_SOURCE_SYSTEM */
+      gl4,                                          /* GL_ACCOUNT_HIER_LEVEL_4 */
+      prod5,                                        /* PROD_HIER_LEVEL_5 */
+      status,                                       /* STATUS_CODE */
+      rbc,                                          /* RBC_CODE */
+      MoM_Account_Detail[SSB_FOR_EVENT],            /* SOURCE_SYSTEM_BALANCE */
+      gl_balance                                    /* GL_BALANCE */
+    ),
+
+  filtered,
+    FILTER(
+      detailCols,
+      ISNUMBER(MATCH(MoM_Account_Detail[FACILITY_FOR_EVENT], topFacilities, 0)) *
+      (MoM_Account_Detail[REVIEWABLE_FLAG]=1) *
+      (MoM_Account_Detail[MOVEMENT_TYPE]="Exit (ex-Auto)") *
+      (MoM_Account_Detail[OWNER_FOR_EVENT]=$R$46) *
+      (MoM_Account_Detail[CURR_EOM]=me)
+    ),
+
+  SORT(filtered, 12, -1)
+)
+
+
+
+
+
+=LET(
   topBlock, $R$50#,
   topFacilities, INDEX(topBlock,,3),
 
