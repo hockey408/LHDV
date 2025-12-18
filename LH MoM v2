@@ -1,4 +1,26 @@
 =SUMIFS(
+  tbl_Facility_Rollup_All[PREV_SSB_SUM],
+  tbl_Facility_Rollup_All[ME_DATE], Top30_Engine!$B$43,
+  tbl_Facility_Rollup_All[OWNER_EVENT], $B$2,
+  tbl_Facility_Rollup_All[MOVEMENT_TYPE], "Exit (ex-Auto)",
+  tbl_Facility_Rollup_All[Reviewable_Flag_Max], 1
+)
+
+
+
+=SUMIFS(
+  tbl_Facility_Rollup_All[CURR_SSB_SUM],
+  tbl_Facility_Rollup_All[ME_DATE], Top30_Engine!$B$43,
+  tbl_Facility_Rollup_All[OWNER_EVENT], $B$2,
+  tbl_Facility_Rollup_All[MOVEMENT_TYPE], "Downgrade IN (ex-Auto)",
+  tbl_Facility_Rollup_All[Reviewable_Flag_Max], 1
+)
+
+
+
+
+
+=SUMIFS(
   MoM_Account_Detail[SSB_FOR_EVENT],
   MoM_Account_Detail[OWNER_FOR_EVENT], $B$2,
   MoM_Account_Detail[REVIEWABLE_FLAG], 1,
