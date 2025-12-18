@@ -1,3 +1,22 @@
+=GETPIVOTDATA(
+  "Total Reviewable SSB",
+  Facility_Rollup!$A$3,
+  "OWNER_FOR_EVENT", $B$2,
+  "Movement_Type", "Downgrade IN (ex-Auto)"
+)
+
+=GETPIVOTDATA(
+  "Total Reviewable SSB",
+  Facility_Rollup!$A$3,
+  "OWNER_FOR_EVENT", $B$2,
+  "Movement_Type", "Exit (ex-Auto)"
+)
+
+
+
+
+
+
 =LET(
   d, MoM_Account_Detail,
   hdr, MoM_Account_Detail[#Headers],
