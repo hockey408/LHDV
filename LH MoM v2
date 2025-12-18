@@ -1,3 +1,25 @@
+=LET(
+  owner, $B$2,
+  mt, "Exit (ex-Auto)",
+  facs, UNIQUE(FILTER(MoM_Account_Detail[FACILITY_ID],
+        (MoM_Account_Detail[OWNER_FOR_EVENT]=owner)*
+        (MoM_Account_Detail[Movement_Type]=mt)
+  )),
+  perFac, BYROW(facs, LAMBDA(f,
+        SUMIFS(
+          MoM_Account_Detail[CURR_SSB],
+          MoM_Account_Detail[FACILITY_ID], f,
+          MoM_Account_Detail[Is_Reviewable], 1
+        )
+  )),
+  SUM(perFac)
+)
+
+
+
+
+
+
 =GETPIVOTDATA(
   "Total Reviewable SSB",
   Facility_Rollup!$A$3,
