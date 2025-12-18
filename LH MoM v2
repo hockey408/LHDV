@@ -1,3 +1,16 @@
+AddME = Table.AddColumn(AddOwner, "ME_DATE", each
+    let
+        c = try Date.From(Record.Field(_, "CURR_EOM")) otherwise null,
+        p = try Date.From(Record.Field(_, "PREV_EOM")) otherwise null
+    in
+        if c <> null then c else p
+, type date),
+
+
+
+
+
+
 let
     Source = Excel.CurrentWorkbook(){[Name="MoM_Account_Detail"]}[Content],
 
