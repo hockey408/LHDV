@@ -1,4 +1,44 @@
 =LET(
+  d, tbl_MoM_Account_Detail,
+  ownerSel, $B$2,
+
+  top, Top30_Engine!$A$8#,
+  facs, UNIQUE(FILTER(CHOOSECOLS(top,2), CHOOSECOLS(top,4)=ownerSel)),
+
+  out, FILTER(
+        d,
+        (d[Owner_For_Event]=ownerSel)*
+        (d[Movement_Type]="Downgrade IN (ex-Auto)")*
+        ISNUMBER(MATCH(d[Facility_For_Event], facs, 0))
+  ),
+  SORTBY(out, out[SSB_For_Event], -1)
+)
+
+
+
+=LET(
+  d, tbl_MoM_Account_Detail,
+  ownerSel, $B$2,
+
+  top, Top30_Engine!$A$60#,
+  facs, UNIQUE(FILTER(CHOOSECOLS(top,2), CHOOSECOLS(top,4)=ownerSel)),
+
+  out, FILTER(
+        d,
+        (d[Owner_For_Event]=ownerSel)*
+        (d[Movement_Type]="Exit (ex-Auto)")*
+        ISNUMBER(MATCH(d[Facility_For_Event], facs, 0))
+  ),
+  SORTBY(out, ABS(out[MoM_Delta]), -1)
+)
+
+
+
+
+
+
+
+=LET(
   t, tbl_Facility_Rollup,
   hdr, tbl_Facility_Rollup[#Headers],
 
