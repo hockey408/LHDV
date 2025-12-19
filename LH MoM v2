@@ -1,3 +1,22 @@
+=LET(
+  owner,"Daniel",
+  t,Facility_Rollup,
+  f,FILTER(t, t[OWNER]=owner),
+  ssb,CHOOSECOLS(f, XMATCH("REVIEWABLE_SSB", t[#Headers])),
+  fac,CHOOSECOLS(f, XMATCH("FACILITY_ID", t[#Headers])),
+  sortedFac, SORTBY(fac, ssb, -1),
+  sortedSSB, SORTBY(ssb, ssb, -1),
+  total, SUM(sortedSSB),
+  run, SCAN(0, sortedSSB, LAMBDA(a,v, a+v)),
+  cov, run/total,
+  n, XMATCH(TRUE, cov>=0.8, 0),
+  TAKE(HSTACK(sortedFac, sortedSSB, cov), n)
+)
+
+
+
+
+
 Netezza SQL
    ↓
 MoM_Account_Detail (Account-Level Table)
