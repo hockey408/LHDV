@@ -1,3 +1,202 @@
+SQL logic overview
+
+MoM_Account_Detail is built as a month-over-month join at the account level (prev month vs curr month). After joining, the SQL assigns:
+
+an event classification (MOVEMENT_TYPE) that explains what happened MoM, and
+
+an owner attribution (OWNER_FOR_EVENT) so movement and Top30 rollups can be grouped to the correct owner.
+
+The guiding design principle is:
+
+Movement_Type describes the event.
+OWNER_FOR_EVENT describes who should be accountable for reviewing that event.
+
+How MOVEMENT_TYPE is assigned
+
+The SQL assigns MOVEMENT_TYPE using a combination of:
+
+Non-Accrual population status (prev vs curr)
+
+Autochange flagging (system-driven vs manual / credit-driven)
+
+Balance change behavior for persisting NA facilities
+
+Even though you don’t always store an explicit “NA flag” field in the extract, the SQL effectively derives NA membership from a status indicator (often PREV_STATUS and CURR_STATUS, or an internal NA flag used in the query).
+
+Conceptual decision tree
+
+Step 1 — Determine NA membership by month
+
+Prev NA? (was account/facility in NA last month)
+
+Curr NA? (is account/facility in NA this month)
+
+Then:
+
+A) Downgrade IN (ex-Auto)
+
+Meaning: Not NA last month → NA this month, and not system autochange.
+
+Typical condition pattern:
+
+Prev NA = No AND Curr NA = Yes
+
+AND NOT autochange
+
+Result:
+
+MOVEMENT_TYPE = "Downgrade IN (ex-Auto)"
+
+B) Exit (ex-Auto)
+
+Meaning: NA last month → not NA this month, and not system autochange.
+
+Typical condition pattern:
+
+Prev NA = Yes AND Curr NA = No
+
+AND NOT autochange
+
+Result:
+
+MOVEMENT_TYPE = "Exit (ex-Auto)"
+
+C) Persisting Balance Changes (ex-Auto)
+
+Meaning: NA last month → NA this month, and balance changed (excluding autochange).
+
+Typical condition pattern:
+
+Prev NA = Yes AND Curr NA = Yes
+
+AND NOT autochange
+
+AND MOM_DELTA <> 0 (or a threshold)
+
+Result:
+
+MOVEMENT_TYPE = "Persisting Balance Changes (ex-Auto)"
+
+Note: Many builds split “Persisting No Δ” vs “Persisting Δ”. In your file, the waterfall uses the Δ version as a bridge component.
+
+D) Autochange movements
+
+Meaning: NA changes driven by system autochange logic.
+
+These are parallel to the “ex-Auto” events, but flagged as autochange:
+
+MOVEMENT_TYPE = "Autochange Downgrade IN"
+
+MOVEMENT_TYPE = "Autochange Exit"
+
+MOVEMENT_TYPE = "Autochange Persisting Balance Changes"
+
+Why we separate Autochange: It allows the waterfall and Top30 review process to isolate system-driven movement from true credit-review movement.
+
+How OWNER_FOR_EVENT is assigned (Owner attribution)
+
+You have:
+
+OWNER_PREV
+
+OWNER_CURR
+
+OWNER_FOR_EVENT
+
+The SQL chooses OWNER_FOR_EVENT based on the type of event so the movement is attributed to the owner most appropriate for review.
+
+Owner attribution rules (recommended / typical)
+1) Exits (ex-Auto)
+
+Owner should come from the NA population you are exiting from, i.e. prior month.
+
+OWNER_FOR_EVENT = OWNER_PREV
+
+Reason:
+
+Exits represent the facility leaving NA; the review is tied to who owned it while it was in NA.
+
+2) Downgrade IN (ex-Auto)
+
+Owner should come from the NA population you are entering into, i.e. current month.
+
+OWNER_FOR_EVENT = OWNER_CURR
+
+Reason:
+
+Downgrades represent new NA entries; the review belongs to the owner now managing the facility in NA.
+
+3) Persisting Balance Changes (ex-Auto)
+
+Owner should generally be the current month owner, unless your org’s accountability model says otherwise.
+
+OWNER_FOR_EVENT = OWNER_CURR (typical)
+
+Reason:
+
+Persisting changes are “active management” within current NA book.
+
+4) Autochange movements
+
+Typically attributed consistently (most teams attribute autochange to the book owner in the month it appears):
+
+OWNER_FOR_EVENT = OWNER_CURR (common)
+
+Reason:
+
+Keeps autochange impacts aligned to the current month ownership reporting.
+
+Practical implication
+
+This rule set prevents common ownership confusion:
+
+Exits don’t get attributed to the “new” owner that never had the NA facility.
+
+Downgrades don’t get attributed to the prior owner who didn’t have it in NA.
+
+How the “FOR_EVENT” fields relate to movement + owner
+
+Your table includes:
+
+FACILITY_FOR_EVENT, CIS_FOR_EVENT, BANK_FOR_EVENT, ACCOUNT_NAME_FOR_EVENT
+
+These exist because a record can “move” (bank, facility id changes, etc.) or may only exist in one month.
+
+General rule:
+
+For Exit events, “FOR_EVENT” values typically align to PREV context.
+
+For Downgrade IN events, “FOR_EVENT” values typically align to CURR context.
+
+For Persisting events, they usually align to CURR (or stable identifiers).
+
+This ensures all rollups and Top30 pulls use a consistent facility identifier for the event.
+
+Why you sometimes see negative SSB_FOR_EVENT
+
+SSB_FOR_EVENT is an event-attributed balance used for drilldowns and Top30 detail. It can be negative due to:
+
+negative balance accounts within a facility
+
+“negative classification” logic (your NEGATIVE_FLAG / NEGATIVE_CLASS)
+
+event attribution rules that apply sign conventions for certain movements
+
+This is why portfolio Starting/Ending balances should be based on population fields (PREV_SSB / CURR_SSB) rather than SSB_FOR_EVENT.
+
+How this ties to Excel objects
+
+MoM_Account_Detail: account-grain event classification + attribution (Movement_Type, Owner_for_event)
+
+tbl_Facility_Rollup_All: PQ rollup using MOVEMENT_TYPE + OWNER_FOR_EVENT to summarize MoM movement at facility level
+
+Top30 Engine: ranks facilities using MOM_DELTA_SUM by movement type and owner
+
+Owner tabs: pulls account-level details using facility membership in the Top30 list + movement type
+
+
+
+
 =LET(
   t, tbl_Facility_Rollup_All,
   owner, "Daniel",
