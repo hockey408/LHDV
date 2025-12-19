@@ -1,3 +1,42 @@
+=SUMIFS(
+  MoM_Account_Detail[MOM_DELTA],
+  MoM_Account_Detail[NEGATIVE_CLASS], "Neg: New (No Prior)",
+  MoM_Account_Detail[CURR_BANK_CODE], C$1,
+  MoM_Account_Detail[CURR_EOM], Top30_Engine!$B$43,
+  MoM_Account_Detail[REVIEWABLE_FLAG], 1
+)
+
+
+=SUM(
+  SUMIFS(
+    MoM_Account_Detail[MOM_DELTA],
+    MoM_Account_Detail[NEGATIVE_CLASS], "Neg: Cleared to Zero",
+    MoM_Account_Detail[CURR_BANK_CODE], C$1,
+    MoM_Account_Detail[CURR_EOM], Top30_Engine!$B$43,
+    MoM_Account_Detail[REVIEWABLE_FLAG], 1
+  ),
+  SUMIFS(
+    MoM_Account_Detail[MOM_DELTA],
+    MoM_Account_Detail[NEGATIVE_CLASS], "Neg: Neg→Pos Flip",
+    MoM_Account_Detail[CURR_BANK_CODE], C$1,
+    MoM_Account_Detail[CURR_EOM], Top30_Engine!$B$43,
+    MoM_Account_Detail[REVIEWABLE_FLAG], 1
+  )
+)
+
+
+=SUMIFS(
+  MoM_Account_Detail[MOM_DELTA],
+  MoM_Account_Detail[NEGATIVE_CLASS], "Neg: Persisting Δ",
+  MoM_Account_Detail[CURR_BANK_CODE], C$1,
+  MoM_Account_Detail[CURR_EOM], Top30_Engine!$B$43,
+  MoM_Account_Detail[REVIEWABLE_FLAG], 1
+)
+
+
+
+
+
 Neg: Cleared to Zero
 Neg: Neg→Pos Flip
 Neg: New (No Prior)
