@@ -3,6 +3,103 @@
   topBlock, Top30_Engine!$A$11#,
   topFacilities, INDEX(topBlock,,1),
 
+  facKey,
+    IF(MoM_Account_Detail[FACILITY_FOR_EVENT]<>"",
+      MoM_Account_Detail[FACILITY_FOR_EVENT],
+      IF(MoM_Account_Detail[CURR_FACILITY_ID]<>"",
+        MoM_Account_Detail[CURR_FACILITY_ID],
+        MoM_Account_Detail[PREV_FACILITY_ID]
+      )
+    ),
+
+  detailCols,
+    CHOOSE(
+      {1,2,3,4,5,6,7,8,9,10,11,12,13},
+      MoM_Account_Detail[CURR_ACCOUNT_NAME],
+      MoM_Account_Detail[CIS_FOR_EVENT],
+      facKey,
+      MoM_Account_Detail[CURR_ACCOUNT_IDENTIFIER],
+      MoM_Account_Detail[ACCOUNT_KEY],
+      MoM_Account_Detail[CURR_BANK_CODE],
+      MoM_Account_Detail[CURR_CSS],
+      MoM_Account_Detail[CURR_GL_L4],
+      MoM_Account_Detail[CURR_PROD5],
+      MoM_Account_Detail[CURR_STATUS],
+      MoM_Account_Detail[CURR_RBC],
+      MoM_Account_Detail[SSB_FOR_EVENT],
+      MoM_Account_Detail[CURR_GL_BALANCE]
+    ),
+
+  filtered,
+    FILTER(
+      detailCols,
+      ISNUMBER(MATCH(facKey, topFacilities, 0)) *
+      (MoM_Account_Detail[REVIEWABLE_FLAG]=1) *
+      (MoM_Account_Detail[MOVEMENT_TYPE]="Downgrade IN (ex-Auto)") *
+      (MoM_Account_Detail[CURR_EOM]=me)
+    ),
+
+  SORT(filtered, 12, -1)
+)
+
+=LET(
+  me, Top30_Engine!$B$43,
+  topBlock, Top30_Engine!$A$52#,
+  topFacilities, INDEX(topBlock,,1),
+
+  facKey,
+    IF(MoM_Account_Detail[FACILITY_FOR_EVENT]<>"",
+      MoM_Account_Detail[FACILITY_FOR_EVENT],
+      IF(MoM_Account_Detail[CURR_FACILITY_ID]<>"",
+        MoM_Account_Detail[CURR_FACILITY_ID],
+        MoM_Account_Detail[PREV_FACILITY_ID]
+      )
+    ),
+
+  detailCols,
+    CHOOSE(
+      {1,2,3,4,5,6,7,8,9,10,11,12,13},
+      MoM_Account_Detail[PREV_ACCOUNT_NAME],
+      MoM_Account_Detail[PREV_CIS],
+      facKey,
+      MoM_Account_Detail[PREV_ACCOUNT_IDENTIFIER],
+      MoM_Account_Detail[ACCOUNT_KEY],
+      MoM_Account_Detail[PREV_BANK_CODE],
+      MoM_Account_Detail[PREV_CSS],
+      MoM_Account_Detail[PREV_GL_L4],
+      MoM_Account_Detail[PREV_PROD5],
+      MoM_Account_Detail[PREV_STATUS],
+      MoM_Account_Detail[PREV_RBC],
+      MoM_Account_Detail[PREV_SSB],
+      MoM_Account_Detail[PREV_GL_BALANCE]
+    ),
+
+  filtered,
+    FILTER(
+      detailCols,
+      ISNUMBER(MATCH(facKey, topFacilities, 0)) *
+      (MoM_Account_Detail[REVIEWABLE_FLAG]=1) *
+      (MoM_Account_Detail[MOVEMENT_TYPE]="Exit (ex-Auto)") *
+      (MoM_Account_Detail[CURR_EOM]=me)
+    ),
+
+  SORT(filtered, 12, -1)
+)
+
+
+
+
+
+
+
+
+
+
+=LET(
+  me, Top30_Engine!$B$2,
+  topBlock, Top30_Engine!$A$11#,
+  topFacilities, INDEX(topBlock,,1),
+
   detailCols,
     CHOOSE(
       {1,2,3,4,5,6,7,8,9,10,11,12,13},
