@@ -1,5 +1,56 @@
 =LET(
   owner,"Daniel",
+  mt,"Downgrade IN (ex-Auto)",
+  t,Facility_Rollup,
+  f,FILTER(t, (t[OWNER]=owner)*(t[Movement_Type]=mt)),
+  fac,f[FACILITY_ID],
+  ssb,f[Reviewable_SSB],
+  sortedFac, SORTBY(fac, ssb, -1),
+  sortedSSB, SORTBY(ssb, ssb, -1),
+  total, SUM(sortedSSB),
+  run, SCAN(0, sortedSSB, LAMBDA(a,v, a+v)),
+  cov, IF(total=0, 0, run/total),
+  n, IF(total=0, 0, XMATCH(TRUE, cov>=0.8, 0)),
+  IF(total=0,
+     {"FACILITY_ID","Reviewable_SSB","Cum_Coverage";"—",0,0},
+     VSTACK(
+       {"FACILITY_ID","Reviewable_SSB","Cum_Coverage"},
+       TAKE(HSTACK(sortedFac, sortedSSB, cov), n)
+     )
+  )
+)
+
+
+=LET(
+  owner,"Daniel",
+  mt,"Exit (ex-Auto)",
+  t,Facility_Rollup,
+  f,FILTER(t, (t[OWNER]=owner)*(t[Movement_Type]=mt)),
+  fac,f[FACILITY_ID],
+  ssb,f[Reviewable_SSB],
+  sortedFac, SORTBY(fac, ssb, -1),
+  sortedSSB, SORTBY(ssb, ssb, -1),
+  total, SUM(sortedSSB),
+  run, SCAN(0, sortedSSB, LAMBDA(a,v, a+v)),
+  cov, IF(total=0, 0, run/total),
+  n, IF(total=0, 0, XMATCH(TRUE, cov>=0.8, 0)),
+  IF(total=0,
+     {"FACILITY_ID","Reviewable_SSB","Cum_Coverage";"—",0,0},
+     VSTACK(
+       {"FACILITY_ID","Reviewable_SSB","Cum_Coverage"},
+       TAKE(HSTACK(sortedFac, sortedSSB, cov), n)
+     )
+  )
+)
+
+
+
+
+
+
+
+=LET(
+  owner,"Daniel",
   t,Facility_Rollup,
   f,FILTER(t, t[OWNER]=owner),
   ssb,CHOOSECOLS(f, XMATCH("REVIEWABLE_SSB", t[#Headers])),
