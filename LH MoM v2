@@ -1,3 +1,64 @@
+=SUMIFS(
+  tbl_Facility_Rollup_All[MOM_DELTA_SUM],
+  tbl_Facility_Rollup_All[MOVEMENT_TYPE], "Autochange Downgrade IN",
+  tbl_Facility_Rollup_All[BANK_EVENT], C$1,
+  tbl_Facility_Rollup_All[ME_DATE], Top30_Engine!$B$43,
+  tbl_Facility_Rollup_All[Reviewable_Flag_Max], 1
+)
+
+
+=-ABS(
+  SUMIFS(
+    tbl_Facility_Rollup_All[MOM_DELTA_SUM],
+    tbl_Facility_Rollup_All[MOVEMENT_TYPE], "Autochange Exit",
+    tbl_Facility_Rollup_All[BANK_EVENT], C$1,
+    tbl_Facility_Rollup_All[ME_DATE], Top30_Engine!$B$43,
+    tbl_Facility_Rollup_All[Reviewable_Flag_Max], 1
+  )
+)
+
+=SUMIFS(
+  tbl_Facility_Rollup_All[MOM_DELTA_SUM],
+  tbl_Facility_Rollup_All[MOVEMENT_TYPE], "Autochange Persisting Balance Changes",
+  tbl_Facility_Rollup_All[BANK_EVENT], C$1,
+  tbl_Facility_Rollup_All[ME_DATE], Top30_Engine!$B$43,
+  tbl_Facility_Rollup_All[Reviewable_Flag_Max], 1
+)
+
+=SUMIFS(
+  tbl_Facility_Rollup_All[MOM_DELTA_SUM],
+  tbl_Facility_Rollup_All[MOVEMENT_TYPE], "Persisting Balance Changes (ex-Auto)",
+  tbl_Facility_Rollup_All[BANK_EVENT], C$1,
+  tbl_Facility_Rollup_All[ME_DATE], Top30_Engine!$B$43,
+  tbl_Facility_Rollup_All[Reviewable_Flag_Max], 1
+)
+
+=SUMIFS(
+  MoM_Account_Detail[MOM_DELTA],
+  MoM_Account_Detail[NEGATIVE_CLASS], "New",
+  MoM_Account_Detail[CURR_BANK_CODE], C$1,
+  MoM_Account_Detail[CURR_EOM], Top30_Engine!$B$43
+)
+
+
+=SUMIFS(
+  MoM_Account_Detail[MOM_DELTA],
+  MoM_Account_Detail[NEGATIVE_CLASS], "Exit",
+  MoM_Account_Detail[CURR_BANK_CODE], C$1,
+  MoM_Account_Detail[CURR_EOM], Top30_Engine!$B$43
+)
+
+=SUMIFS(
+  MoM_Account_Detail[MOM_DELTA],
+  MoM_Account_Detail[NEGATIVE_CLASS], "Persisting Net",
+  MoM_Account_Detail[CURR_BANK_CODE], C$1,
+  MoM_Account_Detail[CURR_EOM], Top30_Engine!$B$43
+)
+
+
+
+
+
 =LET(
   me, Top30_Engine!$B$43,
   SUMIFS(
