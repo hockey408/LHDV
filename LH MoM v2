@@ -1,3 +1,222 @@
+File Preparation Steps
+1) Run the MoM_Account_Detail extract (SQL → Excel)
+
+Refresh the MoM_Account_Detail query (your Netezza ODBC query).
+
+Confirm it loads into the Excel table named MoM_Account_Detail.
+
+Validate the month:
+
+CURR_EOM should equal the current month-end you’re reporting.
+
+PREV_EOM should be the prior month-end.
+
+Quick check: Filter MoM_Account_Detail[CURR_EOM] and make sure there’s only one current month (unless you intentionally pull history).
+
+2) Refresh Power Query rollups (Excel-local; should not hit ODBC)
+
+Confirm the PQ staging query is sourced from the in-workbook table, not ODBC:
+
+In Power Query, the source step should be Excel.CurrentWorkbook(){[Name="MoM_Account_Detail"]}[Content]
+
+Refresh these queries (in order):
+
+pq_MoM_Account_Detail_Excel (or whatever you named the Excel-table-based source)
+
+pq_Facility_Rollup_All
+
+Confirm output table exists in the workbook as:
+
+tbl_Facility_Rollup_All
+
+Why this matters: You don’t want the rollups re-querying Netezza; they should reference the already-loaded table.
+
+3) Set the reporting month used by the dashboard formulas
+
+On Top30_Engine, set/refresh:
+
+Top30_Engine!B43 = current month end (should match MoM_Account_Detail[CURR_EOM])
+
+(You can keep this as a formula like =MAX(MoM_Account_Detail[CURR_EOM]) if you want it automatic.)
+
+4) Refresh the Top30 lists
+
+On Top30_Engine:
+
+Confirm the Top30 spill blocks refresh correctly (e.g., the block starting at Top30_Engine!A52#).
+
+Confirm no blanks/zeros are being ranked unintentionally.
+
+5) Refresh each Top30_Owner tab
+
+For each owner tab:
+
+Confirm the Top30 list matches the engine block for that owner/movement type.
+
+Confirm the Account Detail spill pulls rows.
+
+Confirm KPI cards populate.
+
+6) Refresh the Waterfall
+
+On the Waterfall tab:
+
+Verify the bank columns populate (L-FCB, L-CIT, L-SVB, Total).
+
+Confirm the checks tie (see “Checks” section below).
+
+Logic Overview (SQL → Excel)
+A) SQL logic (MoM_Account_Detail)
+
+MoM_Account_Detail is an account-level month-over-month comparison table.
+
+It contains:
+
+Current month attributes (CURR_*)
+
+Prior month attributes (PREV_*)
+
+Event attribution fields (*_FOR_EVENT) that determine how movements are classified
+
+Movement classification (MOVEMENT_TYPE)
+
+Reviewable logic (REVIEWABLE_FLAG)
+
+Balances:
+
+PREV_SSB, CURR_SSB (population balances)
+
+MOM_DELTA (change)
+
+SSB_FOR_EVENT (event-attributed SSB used for drilldowns)
+
+Important distinction:
+
+PREV_SSB / CURR_SSB = population balances (used for portfolio starting/ending)
+
+MOM_DELTA = movement amount (used for bridge explanations)
+
+SSB_FOR_EVENT = event-attributed amount (useful for Top30 drilldowns / account details; can be negative depending on event logic)
+
+B) Excel / Power Query logic
+1) Facility rollup (tbl_Facility_Rollup_All)
+
+Power Query groups account rows into facility-level movement summaries:
+
+Grain: ME_DATE × Bank × Facility × Owner × Movement_Type
+
+Measures:
+
+PREV_SSB_SUM (sum of PREV_SSB)
+
+CURR_SSB_SUM (sum of CURR_SSB)
+
+MOM_DELTA_SUM (sum of MOM_DELTA)
+
+Reviewable_Flag_Max (max REVIEWABLE_FLAG)
+
+This rollup is ideal for:
+
+Top30 selection at facility level
+
+Waterfall movement rows by movement type
+
+2) Top30 logic
+
+Top30 is selected at facility level using the rollup measures:
+
+Exit (ex-Auto): rank by ABS(MOM_DELTA_SUM)
+
+Downgrade IN (ex-Auto): rank by MOM_DELTA_SUM (largest positive movers)
+
+Account-level detail is pulled from MoM_Account_Detail using:
+
+Facility ∈ Top30 list
+
+REVIEWABLE_FLAG=1
+
+MOVEMENT_TYPE matches
+
+CURR_EOM = Top30_Engine!B43
+
+3) KPI cards on Top30_Owner tabs
+
+KPI cards are owner-level summaries filtered by:
+
+Owner
+
+Movement type
+
+Reviewable flag
+
+Reporting month
+
+(And if you choose, restrict to positive-only values where needed.)
+
+Waterfall Logic (Portfolio Level)
+The key point
+
+The waterfall is portfolio population + bridge, not movement-only.
+
+Starting Balance
+
+Must represent the prior month NA population (not a movement subset).
+
+Ending Balance
+
+Must represent the current month NA population.
+
+Bridge rows
+
+Explain how you got from start to end using:
+
+movement type buckets (from tbl_Facility_Rollup_All)
+
+optional negative diagnostics (from MoM_Account_Detail)
+
+Checks and Tie-Outs
+The issue you found (and the fix you applied)
+
+Your “negative” section is a subset breakout of movement already included above.
+So if you include negatives in the bridge sum, you double count.
+
+Correct approach (memo-only negative section)
+
+Keep negative rows as informational
+
+Exclude them from the tie-out math
+
+Checks that must tie
+
+Ending - (Starting + Net Core Movement) should equal 0
+
+Your Check1/Check2 should exclude the negative rows (memo section)
+
+Practical Validation Checklist (takes 2 minutes)
+
+Month sanity
+
+Top30_Engine!B43 equals the CURR_EOM in MoM_Account_Detail.
+
+Population sanity
+
+Starting Balance (prior NA population) looks reasonable vs last month.
+
+Ending Balance (current NA population) looks reasonable vs current month close.
+
+Movement sanity
+
+Exits are negative (or displayed as negative) and reduce the balance.
+
+Downgrades increase the balance.
+
+Tie-out
+
+Check cells = 0 (or within rounding tolerance if you have pennies).
+
+
+
+
 =SUMIFS(
   MoM_Account_Detail[MOM_DELTA],
   MoM_Account_Detail[NEGATIVE_CLASS], "Neg: New (No Prior)",
