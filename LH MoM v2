@@ -1,4 +1,44 @@
 let
+    Source = PBI_Feed_FacilityReview_Current,
+
+    // One row per CURR_EOM_DATE (you currently only have 1 date anyway, but this is robust)
+    Grouped = Table.Group(
+        Source,
+        {"CURR_EOM_DATE"},
+        {
+            {"TOTAL_CURR_SSB_SUM", each List.Sum([CURR_SSB_SUM]), type number},
+            {"TOTAL_PREV_SSB_SUM", each List.Sum([PREV_SSB_SUM]), type number},
+            {"TOTAL_MOM_DELTA_SUM", each List.Sum([MOM_DELTA_SUM]), type number},
+            {"REVIEWABLE_FACILITY_COUNT", each Table.RowCount(_), Int64.Type},
+
+            // Movement buckets (edit these strings ONLY if your MOVEMENT_TYPE labels differ)
+            {"EXIT_EX_AUTO_DELTA", each List.Sum(Table.SelectRows(_, each [MOVEMENT_TYPE] = "Exit (ex-Auto)")[MOM_DELTA_SUM]), type number},
+            {"DOWNGRADE_IN_EX_AUTO_DELTA", each List.Sum(Table.SelectRows(_, each [MOVEMENT_TYPE] = "Downgrade IN (ex-Auto)")[MOM_DELTA_SUM]), type number}
+        }
+    ),
+
+    AddOther = Table.AddColumn(
+        Grouped,
+        "OTHER_NET_DELTA",
+        each [TOTAL_MOM_DELTA_SUM] - ([EXIT_EX_AUTO_DELTA] + [DOWNGRADE_IN_EX_AUTO_DELTA]),
+        type number
+    ),
+
+    // Add PREV_EOM_DATE if you want it shown in the executive subtitle:
+    // Since it is not in your rollup, we set it as null for now.
+    // If you have a reliable place to pull PREV_EOM_DATE (e.g., a parameter table), we can wire it in.
+    AddPrevDate = Table.AddColumn(AddOther, "PREV_EOM_DATE", each null, type date),
+
+    AddRunTs = Table.AddColumn(AddPrevDate, "RUN_TIMESTAMP", each DateTime.LocalNow(), type datetime)
+
+in
+    AddRunTs
+
+
+
+
+
+let
     Source = pq_Facility_Rollup_All,
 
     // Keep only known columns (stable feed contract)
