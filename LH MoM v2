@@ -1,4 +1,38 @@
 let
+    Source = PBI_Feed_FacilityReview,
+
+    Grouped = Table.Group(
+        Source,
+        {"ME_DATE"},
+        {
+            {"TOTAL_NON_ACCRUAL_BAL", each List.Sum([CURR_SSB_SUM]), type number},
+            {"TOTAL_NON_ACCRUAL_BAL_PRIOR", each List.Sum([PREV_SSB_SUM]), type number},
+            {"MOM_CHANGE_BAL", each List.Sum([MOM_DELTA_SUM]), type number},
+            {"REVIEWABLE_FACILITY_COUNT", each Table.RowCount(_), Int64.Type},
+
+            // Movement buckets (edit strings if your MOVEMENT_TYPE labels differ)
+            {"EXIT_EX_AUTO_BAL", each List.Sum(Table.SelectRows(_, each [MOVEMENT_TYPE] = "Exit (ex-Auto)")[MOM_DELTA_SUM]), type number},
+            {"DOWNGRADE_IN_EX_AUTO_BAL", each List.Sum(Table.SelectRows(_, each [MOVEMENT_TYPE] = "Downgrade IN (ex-Auto)")[MOM_DELTA_SUM]), type number}
+        }
+    ),
+
+    AddOther = Table.AddColumn(
+        Grouped,
+        "OTHER_NET_MOVEMENT_BAL",
+        each [MOM_CHANGE_BAL] - ([EXIT_EX_AUTO_BAL] + [DOWNGRADE_IN_EX_AUTO_BAL]),
+        type number
+    ),
+
+    AddRunTs = Table.AddColumn(AddOther, "RUN_TIMESTAMP", each DateTime.LocalNow(), type datetime)
+
+in
+    AddRunTs
+
+
+
+
+
+let
     Source = pq_Facility_Rollup_All,
 
     // Keep only available columns
