@@ -1,3 +1,207 @@
+
+1. How to Run the File (Operator Instructions)
+
+Open the workbook
+
+Enable Editing and Enable Macros
+
+Click the Refresh button
+
+That’s it.
+
+The refresh macro:
+
+Re-runs the SQL extract that populates MoM_Account_Detail
+
+Refreshes all Power Query rollups that source from that table
+
+Recalculates Top30 Engine logic, Owner tabs, and the Waterfall
+
+Triggers all QA & Controls validations
+
+No manual refreshes or spot checks are required outside the QA & Controls tab.
+
+2. Data & Logic Overview (What’s Under the Hood)
+A. Core data table: MoM_Account_Detail (account-level)
+
+This is the source-of-truth table at the account grain and contains:
+
+Current and prior month attributes (CURR_*, PREV_*)
+
+Month-over-month movement (MOM_DELTA)
+
+Event classification (MOVEMENT_TYPE)
+
+Reviewable inclusion logic (REVIEWABLE_FLAG)
+
+Event-attributed balance (SSB_FOR_EVENT)
+
+Key distinction (very important):
+
+PREV_SSB / CURR_SSB → population balances (used for portfolio start/end)
+
+MOM_DELTA → movement (used to explain change)
+
+SSB_FOR_EVENT → event attribution (used for Top30 drilldowns; can be negative)
+
+Because SSB_FOR_EVENT is event-attributed, it is not used for portfolio starting or ending balances.
+
+B. Facility rollup: tbl_Facility_Rollup_All (facility-level)
+
+Built in Power Query from the Excel table version of MoM_Account_Detail.
+
+Grain:
+
+Month × Bank × Facility × Owner × Movement Type
+
+Key measures:
+
+PREV_SSB_SUM
+
+CURR_SSB_SUM
+
+MOM_DELTA_SUM
+
+Reviewable_Flag_Max
+
+This rollup is used for:
+
+Facility-level Top30 selection
+
+Waterfall movement rows
+
+3. Top30 Logic (What’s Being Reviewed)
+How Top30 facilities are selected
+
+Top30 is selected at the facility level, not account level, using movement:
+
+Exit (ex-Auto) → ranked by ABS(MOM_DELTA_SUM)
+
+Downgrade IN (ex-Auto) → ranked by MOM_DELTA_SUM (largest positive movers)
+
+This avoids distortions caused by negative account balances and ensures Top30 reflects true material movement.
+
+Owner tabs (account-level detail)
+
+Once Top30 facilities are identified, the Owner tabs pull account-level rows where:
+
+Facility ∈ Top30 list
+
+REVIEWABLE_FLAG = 1
+
+Correct MOVEMENT_TYPE
+
+Current reporting month
+
+These tabs are drilldowns, not control totals.
+
+4. Waterfall Logic (Portfolio-Level Bridge)
+
+The waterfall is a portfolio population bridge, not a movement-only view.
+
+Starting Balance
+
+Total prior-month Non-Accrual population SSB
+
+Derived from MoM_Account_Detail population fields (not movement rollups)
+
+Movement Rows
+
+Derived from tbl_Facility_Rollup_All[MOM_DELTA_SUM]
+
+Broken out by movement type (Exit, Downgrade IN, Autochange, Persisting, etc.)
+
+Explain the change from start → end
+
+Negative Section
+
+The “Negative …” rows are memo / diagnostic breakouts
+
+They represent subsets of movement already included above
+
+They are excluded from the reconciliation math to avoid double counting
+
+Ending Balance
+
+Total current-month Non-Accrual population SSB
+
+Derived from MoM_Account_Detail population fields
+
+5. QA & Controls — What Each Check Validates
+
+The QA & Controls tab is the authoritative validation layer.
+If all checks pass, the file is considered correct.
+
+1️⃣ Anchor reconciliation
+
+Purpose: Validate the SQL extract itself
+
+Confirms total current and prior month SSB from MoM_Account_Detail
+
+Reconciles to a simple, independent “Anchor” query
+
+Ensures the base population is complete and accurate
+
+2️⃣ Facility rollup reconciliation
+
+Purpose: Validate Power Query aggregation
+
+Confirms total current and prior SSB from MoM_Account_Detail
+
+Reconciles to totals in tbl_Facility_Rollup_All
+
+Ensures no loss, duplication, or filtering errors in rollups
+
+3️⃣ Top30 reconciliation & coverage reasonableness
+
+Purpose: Validate Top30 logic and drilldowns
+
+Confirms Top30 SSB totals reconcile to individual Owner tabs
+
+Confirms coverage % is reasonable relative to portfolio size
+
+Ensures Top30 lists are subsets of the full population, not overstated
+
+4️⃣ Waterfall reconciliation
+
+Purpose: Validate portfolio bridge integrity
+
+Confirms:
+
+Ending Balance = Starting Balance + Net Core Movement
+
+
+Ensures movement logic fully explains the population change
+
+Confirms no double counting (especially with negative memo rows)
+
+5️⃣ Overall QA Health
+
+Purpose: Executive-level signal
+
+Aggregates all checks into a single PASS / FAIL indicator
+
+If PASS → results are ready for review
+
+If FAIL → investigation required before distribution
+
+6. Interpretation Guidance (For Reviewers)
+
+Top30 ≠ total portfolio
+Top30 is a focused review set, not a control total.
+
+Negative balances are expected at account level
+They are handled correctly at facility and portfolio levels.
+
+Waterfall negatives are informational
+They provide transparency but do not alter the bridge math.
+
+
+
+
+
+
+
 Validate the total current and previous month end SOURCE_SYSTEM_BALANCE (SSB) from MoM_Account_Detail reconciles to simple 'Anchor' query
 
 Validate the total current and previous month end SSB from MoM_Account_Detail reconciles to Facility_Rollup
