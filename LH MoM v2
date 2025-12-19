@@ -1,4 +1,76 @@
 =LET(
+  t, tbl_Facility_Rollup_All,
+  owner, "Daniel",
+  mt, "Downgrade IN (ex-Auto)",
+
+  /* 1) Filter to Daniel + Movement_Type + Reviewable */
+  f, FILTER(t, (t[OWNER_EVEN]=owner)*(t[MOVEMENT_TYPE]=mt)*(t[REVIEWABLE_FLAG_MAX]=1)),
+
+  /* 2) Facility list */
+  facList, UNIQUE(f[FACILITY_EVENT]),
+
+  /* 3) Aggregate CURR_SSB_SUM to facility level */
+  facSSB, MAP(facList, LAMBDA(x, SUMIFS(f[CURR_SSB_SUM], f[FACILITY_EVENT], x))),
+
+  /* 4) Sort by SSB desc */
+  sortedFac, SORTBY(facList, facSSB, -1),
+  sortedSSB, SORTBY(facSSB, facSSB, -1),
+
+  /* 5) Cumulative coverage */
+  total, SUM(sortedSSB),
+  run, SCAN(0, sortedSSB, LAMBDA(a,v, a+v)),
+  cov, IF(total=0, 0, run/total),
+
+  /* 6) Find N to reach 80% */
+  n, IF(total=0, 0, XMATCH(TRUE, cov>=0.8, 0)),
+
+  /* 7) Output table */
+  IF(total=0,
+     {"FACILITY_EVENT","REVIEWABLE_SSB","CUM_COVERAGE";"—",0,0},
+     VSTACK(
+       {"FACILITY_EVENT","REVIEWABLE_SSB","CUM_COVERAGE"},
+       TAKE(HSTACK(sortedFac, sortedSSB, cov), n)
+     )
+  )
+)
+
+=LET(
+  t, tbl_Facility_Rollup_All,
+  owner, "Daniel",
+  mt, "Exit (ex-Auto)",
+
+  f, FILTER(t, (t[OWNER_EVEN]=owner)*(t[MOVEMENT_TYPE]=mt)*(t[REVIEWABLE_FLAG_MAX]=1)),
+
+  facList, UNIQUE(f[FACILITY_EVENT]),
+  facSSB, MAP(facList, LAMBDA(x, SUMIFS(f[CURR_SSB_SUM], f[FACILITY_EVENT], x))),
+
+  sortedFac, SORTBY(facList, facSSB, -1),
+  sortedSSB, SORTBY(facSSB, facSSB, -1),
+
+  total, SUM(sortedSSB),
+  run, SCAN(0, sortedSSB, LAMBDA(a,v, a+v)),
+  cov, IF(total=0, 0, run/total),
+
+  n, IF(total=0, 0, XMATCH(TRUE, cov>=0.8, 0)),
+
+  IF(total=0,
+     {"FACILITY_EVENT","REVIEWABLE_SSB","CUM_COVERAGE";"—",0,0},
+     VSTACK(
+       {"FACILITY_EVENT","REVIEWABLE_SSB","CUM_COVERAGE"},
+       TAKE(HSTACK(sortedFac, sortedSSB, cov), n)
+     )
+  )
+)
+
+
+
+
+
+
+
+
+
+=LET(
   owner,"Daniel",
   mt,"Downgrade IN (ex-Auto)",
   t,Facility_Rollup,
