@@ -1,4 +1,77 @@
 let
+    Source = pq_Facility_Rollup_All,
+
+    // Keep only known columns (stable feed contract)
+    KeepCols = Table.SelectColumns(
+        Source,
+        {"ME_DATE","BANK_EVENT","FACILITY_EVENT","OWNER_EVENT","MOVEMENT_TYPE",
+         "PREV_SSB_SUM","CURR_SSB_SUM","MOM_DELTA_SUM","REVIEWABLE_FLAG_MAX"}
+    ),
+
+    // Type enforcement (FACILITY_EVENT as text is important)
+    Types = Table.TransformColumnTypes(
+        KeepCols,
+        {
+            {"ME_DATE", type date},
+            {"BANK_EVENT", type text},
+            {"FACILITY_EVENT", type text},
+            {"OWNER_EVENT", type text},
+            {"MOVEMENT_TYPE", type text},
+            {"PREV_SSB_SUM", type number},
+            {"CURR_SSB_SUM", type number},
+            {"MOM_DELTA_SUM", type number},
+            {"REVIEWABLE_FLAG_MAX", Int64.Type}
+        }
+    ),
+
+    // Keep reviewable only (recommended for exec feed)
+    ReviewableOnly = Table.SelectRows(Types, each [REVIEWABLE_FLAG_MAX] = 1),
+
+    // Add abs change for ranking / sorting
+    AddAbs = Table.AddColumn(ReviewableOnly, "BAL_CHANGE_ABS", each Number.Abs([MOM_DELTA_SUM]), type number),
+
+    // Rank Top30 within the month-end by BAL_CHANGE_ABS
+    SortForRank = Table.Sort(AddAbs, {{"ME_DATE", Order.Ascending}, {"BAL_CHANGE_ABS", Order.Descending}}),
+
+    Grouped =
+        Table.Group(
+            SortForRank,
+            {"ME_DATE"},
+            {
+                {"Data", (t) =>
+                    let
+                        t2 = Table.AddIndexColumn(t, "MONTH_RANK", 1, 1, Int64.Type),
+                        t3 = Table.AddColumn(t2, "TOP30_FLAG", each if [MONTH_RANK] <= 30 then "Y" else "N", type text)
+                    in
+                        t3
+                , type table}
+            }
+        ),
+
+    Expanded = Table.ExpandTableColumn(
+        Grouped,
+        "Data",
+        {"BANK_EVENT","FACILITY_EVENT","OWNER_EVENT","MOVEMENT_TYPE","REVIEWABLE_FLAG_MAX",
+         "PREV_SSB_SUM","CURR_SSB_SUM","MOM_DELTA_SUM","BAL_CHANGE_ABS","MONTH_RANK","TOP30_FLAG"},
+        {"BANK_EVENT","FACILITY_EVENT","OWNER_EVENT","MOVEMENT_TYPE","REVIEWABLE_FLAG_MAX",
+         "PREV_SSB_SUM","CURR_SSB_SUM","MOM_DELTA_SUM","BAL_CHANGE_ABS","MONTH_RANK","TOP30_FLAG"}
+    ),
+
+    // Rename ME_DATE -> CURR_EOM_DATE to make "snapshot" explicit
+    RenameCols = Table.RenameColumns(Expanded, {{"ME_DATE", "CURR_EOM_DATE"}}),
+
+    // Refresh timestamp
+    AddRunTs = Table.AddColumn(RenameCols, "RUN_TIMESTAMP", each DateTime.LocalNow(), type datetime)
+
+in
+    AddRunTs
+
+
+
+
+
+
+let
     Source = PBI_Feed_FacilityReview,
 
     Grouped = Table.Group(
