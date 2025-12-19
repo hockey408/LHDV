@@ -1,3 +1,92 @@
+let
+    Source = pq_MoM_Account_Detail_Excel,
+
+    // -----------------------------
+    // Canonical Event Dimensions
+    // Priority: FOR_EVENT → CURR → PREV
+    // -----------------------------
+    AddFacility = Table.AddColumn(Source, "FACILITY_EVENT", each
+        let
+            fe = try Text.From(Record.Field(_, "FACILITY_FOR_EVENT")) otherwise null,
+            ce = try Text.From(Record.Field(_, "CURR_FACILITY_ID")) otherwise null,
+            pe = try Text.From(Record.Field(_, "PREV_FACILITY_ID")) otherwise null
+        in
+            if fe <> null and Text.Trim(fe) <> "" then fe
+            else if ce <> null and Text.Trim(ce) <> "" then ce
+            else pe
+    , type text),
+
+    AddBank = Table.AddColumn(AddFacility, "BANK_EVENT", each
+        let
+            fe = try Text.From(Record.Field(_, "BANK_FOR_EVENT")) otherwise null
+        in
+            fe
+    , type text),
+
+    AddOwner = Table.AddColumn(AddBank, "OWNER_EVENT", each
+        let
+            fe = try Text.From(Record.Field(_, "OWNER_FOR_EVENT")) otherwise null
+        in
+            fe
+    , type text),
+
+    // -----------------------------
+    // Month End
+    // -----------------------------
+    AddME = Table.AddColumn(AddOwner, "ME_DATE", each
+        let
+            c = try Date.From(Record.Field(_, "CURR_EOM")) otherwise null,
+            p = try Date.From(Record.Field(_, "PREV_EOM")) otherwise null
+        in
+            if c <> null then c else p
+    , type date),
+
+    // -----------------------------
+    // Keep Only What We Need
+    // -----------------------------
+    KeepCols = Table.SelectColumns(AddME,{
+        "ME_DATE",
+        "BANK_EVENT",
+        "FACILITY_EVENT",
+        "OWNER_EVENT",
+        "MOVEMENT_TYPE",
+        "PREV_SSB",
+        "CURR_SSB",
+        "MOM_DELTA",
+        "REVIEWABLE_FLAG"
+    }),
+
+    Types = Table.TransformColumnTypes(KeepCols,{
+        {"ME_DATE", type date},
+        {"BANK_EVENT", type text},
+        {"FACILITY_EVENT", type text},
+        {"OWNER_EVENT", type text},
+        {"MOVEMENT_TYPE", type text},
+        {"PREV_SSB", type number},
+        {"CURR_SSB", type number},
+        {"MOM_DELTA", type number},
+        {"REVIEWABLE_FLAG", Int64.Type}
+    }),
+
+    // -----------------------------
+    // Facility-Level Rollup
+    // -----------------------------
+    Grouped = Table.Group(Types,
+        {"ME_DATE","BANK_EVENT","FACILITY_EVENT","OWNER_EVENT","MOVEMENT_TYPE"},
+        {
+            {"PREV_SSB_SUM", each List.Sum([PREV_SSB]), type number},
+            {"CURR_SSB_SUM", each List.Sum([CURR_SSB]), type number},
+            {"MOM_DELTA_SUM", each List.Sum([MOM_DELTA]), type number},
+            {"REVIEWABLE_FLAG_MAX", each List.Max([REVIEWABLE_FLAG]), Int64.Type}
+        }
+    )
+in
+    Grouped
+
+
+
+
+
 /* ================================== Query 1: MoM_Account_Detail ======================================= */
 
 WITH latest_curr AS (
