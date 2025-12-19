@@ -1,3 +1,25 @@
+Netezza SQL
+   ↓
+MoM_Account_Detail (Account-Level Table)
+   ↓
+Power Query (Excel-sourced, not ODBC)
+   ↓
+tbl_Facility_Rollup_All (Facility-Level Aggregation)
+   ↓
+────────────────────────────────────
+↓              ↓                 ↓
+Top30 Engine   Owner Tabs        Waterfall
+(Facility)    (Account Detail)  (Portfolio Bridge)
+────────────────────────────────────
+   ↓
+QA & Controls
+   ↓
+Overall QA Health (PASS / FAIL)
+
+
+
+
+
 
 1. How to Run the File (Operator Instructions)
 
