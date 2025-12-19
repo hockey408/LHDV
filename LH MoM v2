@@ -1,3 +1,128 @@
+Process & Methodology
+
+EXECUTIVE SUMMARY (READ THIS FIRST)
+
+WHAT THIS FILE PRODUCES
+This workbook delivers a controlled, reconcilable view of the Non-Accrual (NA) portfolio, including:
+• A portfolio-level bridge explaining month-over-month NA balance change
+• Top30 facility review lists for material Downgrades IN and Exits
+• Owner-specific drilldowns to support targeted review and accountability
+
+WHY THE OUTPUTS CAN BE TRUSTED
+• Single source of truth: All results originate from one SQL extract (MoM_Account_Detail)
+• Deterministic pipeline: SQL → Excel table → Power Query rollups → Excel formulas
+• No manual manipulation: One-button refresh minimizes human error
+• Built-in controls: Multiple reconciliation checks must pass before use
+• Transparency: Exceptions (e.g., negative balances) are surfaced, not hidden
+
+DECISION RULE
+If Overall QA Health = PASS, outputs are approved for review and distribution.
+If FAIL, results should not be used until resolved.
+
+------------------------------------------------------------
+
+1. OUTPUTS & KEY DEFINITIONS
+
+• NA Population: Accounts flagged as Non-Accrual at month end
+• Movement_Type: Facility-level classification explaining NA population change
+• Reviewable_Flag: Identifies facilities queued for Top30 review
+• Owner_For_Event: Single accountable owner per facility
+• Top30: Prioritized review list, not portfolio totals
+
+------------------------------------------------------------
+
+2. END-TO-END DATA FLOW
+
+SQL (Netezza)
+→ MoM_Account_Detail (Excel Table)
+→ Power Query Facility Rollup
+→ Top30 Engine
+→ Owner Drilldowns
+→ Waterfall
+→ QA & Controls (PASS/FAIL)
+
+------------------------------------------------------------
+
+3. SQL LOGIC OVERVIEW
+
+Month Selection
+• CURR_EOM: latest NA month
+• PREV_EOM: prior NA month
+
+Population Scope
+• NA accounts only
+• Relevant GL categories
+• Positive and negative balances retained
+
+Account-Level Construction
+• Collapse to one row per ACCOUNT_KEY per month
+• Full outer join across months
+• MOM_DELTA = CURR_SSB − PREV_SSB
+• Negative diagnostics retained
+
+Event-Scoped Identifiers
+• FOR_EVENT → CURR → PREV logic ensures correct grouping
+
+------------------------------------------------------------
+
+4. FACILITY-LEVEL CLASSIFICATION
+
+Movement_Type
+• Downgrade IN (ex-Auto)
+• Exit (ex-Auto)
+• Persisting Balance Changes (ex-Auto)
+• Autochange variants
+• No Change variants
+
+Owner_For_Event
+• Derived from representative account (largest |SSB_FOR_EVENT|)
+• Absolute overrides applied at facility level
+
+Reviewable_Flag
+• Only Downgrade IN and Exit (ex-Auto)
+• Requires positive exposure
+• Coverage thresholds applied
+• Autochange excluded
+
+------------------------------------------------------------
+
+5. EXCEL LOGIC
+
+Power Query Rollup
+• Groups by Month, Bank, Facility, Owner, Movement_Type
+• Sums PREV_SSB, CURR_SSB, MOM_DELTA
+
+Top30 Engine
+• Downgrade IN ranked by MOM_DELTA
+• Exit ranked by ABS(MOM_DELTA)
+
+Owner Tabs
+• Drilldowns using unified facility key logic
+• Account-level context only
+
+------------------------------------------------------------
+
+6. WATERFALL LOGIC
+
+• Starting balance = Prior NA population
+• Movement rows explain change
+• Ending balance = Current NA population
+• Negative rows are diagnostic only
+
+------------------------------------------------------------
+
+7. QA & CONTROLS
+
+• Anchor reconciliation
+• Rollup reconciliation
+• Top30 reconciliation
+• Waterfall tie-out
+• Overall QA Health (PASS/FAIL)
+
+
+
+
+
 =LET(
   me, Top30_Engine!$B$2,
   topBlock, Top30_Engine!$A$11#,
