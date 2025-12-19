@@ -1,3 +1,18 @@
+Validate the total current and previous month end SOURCE_SYSTEM_BALANCE (SSB) from MoM_Account_Detail reconciles to simple 'Anchor' query
+
+Validate the total current and previous month end SSB from MoM_Account_Detail reconciles to Facility_Rollup
+
+Validate Top30 SSB for current month reconciles to individual 'Owner' tabs for their respective 'Segments' and coverage % is reasonable
+
+Validate Bridge rows reconcile to total ending balance
+
+Overall QA Health
+
+
+
+
+
+
 File Preparation Steps
 1) Run the MoM_Account_Detail extract (SQL → Excel)
 
