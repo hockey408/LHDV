@@ -1,3 +1,14 @@
+Neg: Cleared to Zero
+Neg: Neg→Pos Flip
+Neg: New (No Prior)
+Neg: Persisting No Δ
+Neg: Persisting Δ
+Neg: Pos→Neg Flip
+
+
+
+
+
 =SUMIFS(
   tbl_Facility_Rollup_All[MOM_DELTA_SUM],
   tbl_Facility_Rollup_All[MOVEMENT_TYPE], "Autochange Downgrade IN",
