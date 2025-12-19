@@ -1,3 +1,62 @@
+=LET(
+  me, $B$2,
+  mt, $B$3,
+  own, $B$4,
+  bk, $B$5,
+  topN, $B$7,
+
+  crit,
+    (tbl_Facility_Rollup_All[ME_DATE]=me) *
+    (tbl_Facility_Rollup_All[MOVEMENT_TYPE]=mt) *
+    (tbl_Facility_Rollup_All[REVIEWABLE_FLAG_MAX]=1) *
+    IF(own="ALL", 1, tbl_Facility_Rollup_All[OWNER_EVENT]=own) *
+    IF(bk="ALL", 1, tbl_Facility_Rollup_All[BANK_EVENT]=bk),
+
+  fac,   FILTER(tbl_Facility_Rollup_All[FACILITY_EVENT], crit),
+  ownc,  FILTER(tbl_Facility_Rollup_All[OWNER_EVENT], crit),
+  bank,  FILTER(tbl_Facility_Rollup_All[BANK_EVENT], crit),
+  prev,  FILTER(tbl_Facility_Rollup_All[PREV_SSB_SUM], crit),
+  curr,  FILTER(tbl_Facility_Rollup_All[CURR_SSB_SUM], crit),
+  delta, FILTER(tbl_Facility_Rollup_All[MOM_DELTA_SUM], crit),
+
+  metric, IF(mt="Downgrade IN (ex-Auto)", delta, ABS(delta)),
+
+  data, HSTACK(fac, ownc, bank, prev, curr, delta, metric),
+  sorted, SORTBY(data, metric, -1),
+
+  TAKE(sorted, MIN(topN, ROWS(sorted)))
+)
+
+=LET(
+  me, $B$43,
+  mt, $B$44,
+  own, $B$45,
+  bk, $B$46,
+  topN, $B$48,
+
+  crit,
+    (tbl_Facility_Rollup_All[ME_DATE]=me) *
+    (tbl_Facility_Rollup_All[MOVEMENT_TYPE]=mt) *
+    (tbl_Facility_Rollup_All[REVIEWABLE_FLAG_MAX]=1) *
+    IF(own="ALL", 1, tbl_Facility_Rollup_All[OWNER_EVENT]=own) *
+    IF(bk="ALL", 1, tbl_Facility_Rollup_All[BANK_EVENT]=bk),
+
+  fac,   FILTER(tbl_Facility_Rollup_All[FACILITY_EVENT], crit),
+  ownc,  FILTER(tbl_Facility_Rollup_All[OWNER_EVENT], crit),
+  bank,  FILTER(tbl_Facility_Rollup_All[BANK_EVENT], crit),
+  prev,  FILTER(tbl_Facility_Rollup_All[PREV_SSB_SUM], crit),
+  curr,  FILTER(tbl_Facility_Rollup_All[CURR_SSB_SUM], crit),
+  delta, FILTER(tbl_Facility_Rollup_All[MOM_DELTA_SUM], crit),
+
+  metric, IF(mt="Downgrade IN (ex-Auto)", delta, ABS(delta)),
+
+  data, HSTACK(fac, ownc, bank, prev, curr, delta, metric),
+  sorted, SORTBY(data, metric, -1),
+
+  TAKE(sorted, MIN(topN, ROWS(sorted)))
+)
+
+
 let
     Source = pq_MoM_Account_Detail_Excel,
 
