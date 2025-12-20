@@ -1,4 +1,67 @@
 let
+    Source = Excel.CurrentWorkbook(){[Name="tbl_Neg_NA"]}[Content],
+
+    Types = Table.TransformColumnTypes(
+        Source,
+        {
+            {"END_OF_MONTH_DATE", type date},
+            {"CIS_CUSTOMER_NUMBER", type text},
+            {"ACCOUNT_KEY", type text},
+            {"ACCOUNT_IDENTIFIER", type text},
+            {"FACILITY_ID", type text},
+            {"ACCOUNT_NAME", type text},
+            {"CONTRACT_SOURCE_SYSTEM", type text},
+            {"PROD_HIER_LEVEL_5", type text},
+            {"RBC_CODE", type text},
+            {"STATUS_CODE_DESCRIPTION", type text},
+            {"GL_ACCOUNT_HIER_LEVEL_4", type text},
+            {"GL_ACCOUNT_CODE", type text},
+            {"NON_ACCRUAL_FLAG", type text},
+            {"SSB", type number},
+            {"CO_MTD", type number},
+            {"IS_NA", Int64.Type},
+            {"IS_NEGATIVE_SSB", Int64.Type},
+            {"CIS_NEG_NA_SSB", type number}
+        }
+    ),
+
+    Renamed = Table.RenameColumns(Types, {{"END_OF_MONTH_DATE", "CURR_EOM_DATE"}}),
+
+    KeepCols = Table.SelectColumns(
+        Renamed,
+        {
+            "CURR_EOM_DATE",
+            "CIS_CUSTOMER_NUMBER",
+            "FACILITY_ID",
+            "ACCOUNT_KEY",
+            "ACCOUNT_IDENTIFIER",
+            "ACCOUNT_NAME",
+            "CONTRACT_SOURCE_SYSTEM",
+            "PROD_HIER_LEVEL_5",
+            "RBC_CODE",
+            "STATUS_CODE_DESCRIPTION",
+            "GL_ACCOUNT_HIER_LEVEL_4",
+            "GL_ACCOUNT_CODE",
+            "NON_ACCRUAL_FLAG",
+            "SSB",
+            "CO_MTD",
+            "IS_NA",
+            "IS_NEGATIVE_SSB",
+            "CIS_NEG_NA_SSB"
+        }
+    ),
+
+    AddRunTs = Table.AddColumn(KeepCols, "RUN_TIMESTAMP", each DateTime.LocalNow(), type datetime)
+
+in
+    AddRunTs
+
+
+
+
+
+
+let
     Source = Excel.CurrentWorkbook(){[Name="tbl_Chargeoff"]}[Content],
 
     // Types (force IDs to text)
