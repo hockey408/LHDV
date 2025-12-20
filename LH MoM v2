@@ -1,4 +1,46 @@
 let
+    Source = pq_Facility_Rollup_All,
+
+    Types = Table.TransformColumnTypes(
+        Source,
+        {
+            {"ME_DATE", type date},
+            {"MOVEMENT_TYPE", type text},
+            {"MOM_DELTA_SUM", type number},
+            {"REVIEWABLE_FLAG_MAX", Int64.Type}
+        }
+    ),
+
+    Reviewable = Table.SelectRows(Types, each [REVIEWABLE_FLAG_MAX] = 1),
+
+    Grouped = Table.Group(
+        Reviewable,
+        {"ME_DATE"},
+        {
+            {"REVIEWABLE_TOTAL_DELTA", each List.Sum([MOM_DELTA_SUM]), type number},
+            {"EXIT_EX_AUTO_DELTA", each List.Sum(Table.SelectRows(_, each [MOVEMENT_TYPE] = "Exit (ex-Auto)")[MOM_DELTA_SUM]), type number},
+            {"DOWNGRADE_IN_EX_AUTO_DELTA", each List.Sum(Table.SelectRows(_, each [MOVEMENT_TYPE] = "Downgrade IN (ex-Auto)")[MOM_DELTA_SUM]), type number}
+        }
+    ),
+
+    AddOther = Table.AddColumn(
+        Grouped,
+        "OTHER_REVIEWABLE_DELTA",
+        each [REVIEWABLE_TOTAL_DELTA] - ([EXIT_EX_AUTO_DELTA] + [DOWNGRADE_IN_EX_AUTO_DELTA]),
+        type number
+    ),
+
+    Rename = Table.RenameColumns(Grouped, {{"ME_DATE","CURR_EOM_DATE"}}),
+    AddRunTs = Table.AddColumn(AddOther, "RUN_TIMESTAMP", each DateTime.LocalNow(), type datetime)
+
+in
+    AddRunTs
+
+
+
+
+
+let
     Source = Excel.CurrentWorkbook(){[Name="MoM_Account_Detail"]}[Content],
 
     // --- EDIT THESE 4 NAMES TO MATCH YOUR TABLE ---
