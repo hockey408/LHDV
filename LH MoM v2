@@ -1,3 +1,32 @@
+Purpose
+Serve as the granular account-level foundation for all month-over-month Non-Accrual analysis.
+
+Primary Inputs
+
+Netezza SQL extract (current and prior month)
+
+Account, facility, customer, and product attributes
+
+Key Logic Applied
+
+Alignment of current vs. prior month records
+
+Calculation of MoM Non-Accrual changes
+
+Retention of full account-level detail for drill-through
+
+Business Rules / Assumptions
+
+Account-level Non-Accrual flags may differ within a facility
+
+No Movement_Type classification occurs at this level
+
+Outputs / How to Use
+Used for downstream facility aggregation and Top 30 account-level detail views.
+
+
+
+
 Top30 Balance Reviewed (Curr) =
 VAR TopFacilities =
     CALCULATETABLE(
