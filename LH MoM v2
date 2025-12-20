@@ -1,4 +1,51 @@
 let
+    Source = Excel.CurrentWorkbook(){[Name="MoM_Account_Detail"]}[Content],
+
+    // --- EDIT THESE 4 NAMES TO MATCH YOUR TABLE ---
+    Types = Table.TransformColumnTypes(
+        Source,
+        {
+            {"CURR_EOM", type date},
+            {"PREV_EOM", type date},
+            {"CURR_SSB", type number},
+            {"PREV_SSB", type number}
+        }
+    ),
+
+    // Deduplicate at account_key if needed (prevents double counting)
+    // If each row is already unique per ACCOUNT_KEY, this still works.
+    Dedup = Table.Group(
+        Types,
+        {"CURR_EOM","PREV_EOM","ACCOUNT_KEY"},
+        {
+            {"CURR_SSB_ACCT", each List.Max([CURR_SSB]), type number},
+            {"PREV_SSB_ACCT", each List.Max([PREV_SSB]), type number}
+        }
+    ),
+
+    OneRow = Table.Group(
+        Dedup,
+        {"CURR_EOM","PREV_EOM"},
+        {
+            {"PORTFOLIO_CURR_NA_BAL", each List.Sum([CURR_SSB_ACCT]), type number},
+            {"PORTFOLIO_PREV_NA_BAL", each List.Sum([PREV_SSB_ACCT]), type number}
+        }
+    ),
+
+    AddDelta = Table.AddColumn(OneRow, "PORTFOLIO_MOM_DELTA", each [PORTFOLIO_CURR_NA_BAL] - [PORTFOLIO_PREV_NA_BAL], type number),
+
+    Rename = Table.RenameColumns(AddDelta, {{"CURR_EOM","CURR_EOM_DATE"},{"PREV_EOM","PREV_EOM_DATE"}}),
+
+    AddRunTs = Table.AddColumn(Rename, "RUN_TIMESTAMP", each DateTime.LocalNow(), type datetime)
+
+in
+    AddRunTs
+
+
+
+
+
+let
     Source = PBI_Feed_FacilityReview_Current,
 
     // One row per CURR_EOM_DATE (you currently only have 1 date anyway, but this is robust)
