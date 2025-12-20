@@ -1,4 +1,49 @@
 let
+    Source = pq_Facility_Rollup_All,
+
+    KeepCols = Table.SelectColumns(
+        Source,
+        {"ME_DATE","FACILITY_EVENT","PREV_SSB_SUM","CURR_SSB_SUM","MOM_DELTA_SUM","REVIEWABLE_FLAG_MAX"}
+    ),
+
+    Types = Table.TransformColumnTypes(
+        KeepCols,
+        {
+            {"ME_DATE", type date},
+            {"FACILITY_EVENT", type text},
+            {"PREV_SSB_SUM", type number},
+            {"CURR_SSB_SUM", type number},
+            {"MOM_DELTA_SUM", type number},
+            {"REVIEWABLE_FLAG_MAX", Int64.Type}
+        }
+    ),
+
+    // Dedupe: 1 row per facility per month-end
+    // Use MAX to avoid double-counting if the facility appears multiple times
+    FacilityDedup =
+        Table.Group(
+            Types,
+            {"ME_DATE","FACILITY_EVENT"},
+            {
+                {"PREV_SSB_FAC", each List.Max([PREV_SSB_SUM]), type number},
+                {"CURR_SSB_FAC", each List.Max([CURR_SSB_SUM]), type number},
+                {"MOM_DELTA_FAC", each List.Max([MOM_DELTA_SUM]), type number},
+                {"REVIEWABLE_FLAG_MAX", each List.Max([REVIEWABLE_FLAG_MAX]), Int64.Type}
+            }
+        ),
+
+    Rename = Table.RenameColumns(FacilityDedup, {{"ME_DATE","CURR_EOM_DATE"}}),
+    AddAbs = Table.AddColumn(Rename, "BAL_CHANGE_ABS", each Number.Abs([MOM_DELTA_FAC]), type number),
+    AddRunTs = Table.AddColumn(AddAbs, "RUN_TIMESTAMP", each DateTime.LocalNow(), type datetime)
+
+in
+    AddRunTs
+
+
+
+
+
+let
     Source = Excel.CurrentWorkbook(){[Name="tbl_Neg_NA"]}[Content],
 
     Types = Table.TransformColumnTypes(
