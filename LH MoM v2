@@ -1,3 +1,59 @@
+let
+    Source = Excel.CurrentWorkbook(){[Name="tbl_Chargeoff"]}[Content],
+
+    // Types (force IDs to text)
+    Types = Table.TransformColumnTypes(
+        Source,
+        {
+            {"QUERY_RUN_TIMESTAMP", type datetime},
+            {"END_OF_MONTH_DATE", type date},
+            {"CIS_CUSTOMER_NUMBER", type text},
+            {"ACCOUNT_NAME", type text},
+            {"CONTRACT_SOURCE_SYSTEM", type text},
+            {"FACILITY_ID", type text},
+            {"ACCOUNT_IDENTIFIER", type text},
+            {"ACCOUNT_KEY", type text},
+            {"CHARGE_OFF_AMOUNT_MTD", type number},
+            {"BANK_CODE", type text}
+        }
+    ),
+
+    // Rename to stable PBI feed contract
+    Renamed = Table.RenameColumns(
+        Types,
+        {
+            {"END_OF_MONTH_DATE", "CURR_EOM_DATE"},
+            {"CHARGE_OFF_AMOUNT_MTD", "CHARGEOFF_MTD_AMT"}
+        }
+    ),
+
+    // Keep only what we need
+    KeepCols = Table.SelectColumns(
+        Renamed,
+        {
+            "CURR_EOM_DATE",
+            "QUERY_RUN_TIMESTAMP",
+            "BANK_CODE",
+            "CONTRACT_SOURCE_SYSTEM",
+            "FACILITY_ID",
+            "ACCOUNT_KEY",
+            "ACCOUNT_IDENTIFIER",
+            "ACCOUNT_NAME",
+            "CIS_CUSTOMER_NUMBER",
+            "CHARGEOFF_MTD_AMT"
+        }
+    ),
+
+    // Add refresh timestamp (optional; you already have QUERY_RUN_TIMESTAMP)
+    AddRunTs = Table.AddColumn(KeepCols, "RUN_TIMESTAMP", each DateTime.LocalNow(), type datetime)
+
+in
+    AddRunTs
+
+
+
+
+
 QUERY_RUN_TIMESTAMP
 END_OF_MONTH_DATE
 CIS_CUSTOMER_NUMBER
