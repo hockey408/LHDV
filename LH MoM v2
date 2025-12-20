@@ -1,3 +1,47 @@
+Top30 Balance Reviewed (Curr) =
+VAR TopFacilities =
+    CALCULATETABLE(
+        VALUES ( PBI_Feed_FacilityReview_Current[FACILITY_EVENT] ),
+        PBI_Feed_FacilityReview_Current[TOP30_FLAG] = "Y"
+    )
+RETURN
+    CALCULATE(
+        SUM ( PBI_Feed_FacilityBalance_Current[CURR_SSB_FAC] ),
+        TREATAS( TopFacilities, PBI_Feed_FacilityBalance_Current[FACILITY_EVENT] )
+    )
+
+
+
+Chargeoffs MTD =
+SUM ( PBI_Feed_Chargeoff_Current[CHARGEOFF_MTD_AMT] )
+
+Neg_NA SSB =
+SUM ( PBI_Feed_NegNA_Current[CIS_NEG_NA_SSB] )
+
+
+Neg_NA SSB (Filtered) =
+CALCULATE(
+    SUM ( PBI_Feed_NegNA_Current[SSB] ),
+    PBI_Feed_NegNA_Current[IS_NEGATIVE_SSB] = 1
+)
+
+Waterfall Value =
+SWITCH(
+    SELECTEDVALUE( WaterfallSteps[Step] ),
+    "Previous Portfolio", [Portfolio Prev NA],
+    "Exit (ex-Auto)", [Exit (ex-Auto)],
+    "Downgrade IN (ex-Auto)", [Downgrade IN (ex-Auto)],
+    "Other Reviewable", [Other Reviewable],
+    "Non-Reviewable Net", [Non-Reviewable Net Δ],
+    "Current Portfolio", [Portfolio Curr NA]
+)
+
+
+
+
+
+
+
 let
     Source = pq_Facility_Rollup_All,
 
