@@ -1,3 +1,50 @@
+Purpose
+Account-level detail and drill-through view for MoM Non-Accrual changes, aligned to Facility-level classification.
+
+Primary Inputs
+	•	Netezza SQL extract (account-level rows)
+	•	SQL-derived Facility-level classification fields (Movement_Type, Owner)
+
+Key Logic Applied
+	•	SQL aligns current vs prior month and computes MoM deltas at the account level
+	•	SQL assigns Movement_Type and Owner at the Facility level, then stamps those values onto each account row within that facility (for consistent detail views)
+
+Business Rules / Assumptions
+	•	Movement_Type/Owner are authoritative from SQL (facility-level)
+	•	Account-level attributes may vary within a facility, but classification does not
+
+Outputs / How to Use
+Use for Top 30 facility drill-down and reviewer evidence.
+
+⸻
+
+✅ Corrected Callout — Facility_Rollup
+
+LOGIC & METHODOLOGY — FACILITY_ROLLUP
+
+Purpose
+Facility-level aggregation layer used for Top 30 ranking and executive summaries.
+
+Primary Inputs
+	•	MoM_Account_Detail (account-level rows with facility keys)
+	•	SQL-derived Facility-level MOVEMENT_TYPE and OWNER_FOR_EVENT
+
+Key Logic Applied
+	•	Aggregates account-level balances/movements to Facility totals
+	•	Does not re-calculate Movement_Type or Owner
+	•	Uses SQL-derived Facility-level Movement_Type/Owner as the facility’s classification fields (should be consistent across all accounts within facility)
+
+Business Rules / Assumptions
+	•	If accounts within a facility ever disagree on Movement_Type/Owner, that is treated as a data quality exception to investigate (should be rare if SQL is correct)
+
+Outputs / How to Use
+Feeds Top30_Engine and the Executive Summary as the authoritative facility-level review dataset.
+
+
+
+
+
+
 📘 Facility_Rollup
 
 LOGIC & METHODOLOGY — FACILITY_ROLLUP
