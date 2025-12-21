@@ -1,3 +1,9 @@
+=IF(OR([@Owner_Consistency_Flag]="MISMATCH",[@Movement_Consistency_Flag]="MISMATCH"),"EXCEPTION","OK")
+
+
+
+
+
 =LET(
   f, [@FACILITY_ID],
   u, UNIQUE(FILTER(MoM_Account_Detail[OWNER_FOR_EVENT], MoM_Account_Detail[FACILITY_ID]=f)),
