@@ -4,6 +4,28 @@
   IF(ROWS(u)=1,"OK","MISMATCH")
 )
 
+=LET(
+  f, [@FACILITY_ID],
+  u, UNIQUE(FILTER(MoM_Account_Detail[MOVEMENT_TYPE], MoM_Account_Detail[FACILITY_ID]=f)),
+  IF(ROWS(u)=1,"OK","MISMATCH")
+)
+
+=LET(
+  f, [@FACILITY_ID],
+  ROWS(UNIQUE(FILTER(MoM_Account_Detail[OWNER_FOR_EVENT], MoM_Account_Detail[FACILITY_ID]=f)))
+)
+
+=LET(
+  f, [@FACILITY_ID],
+  ROWS(UNIQUE(FILTER(MoM_Account_Detail[MOVEMENT_TYPE], MoM_Account_Detail[FACILITY_ID]=f)))
+)
+
+=LET(
+  f, [@FACILITY_ID],
+  TEXTJOIN(" | ", TRUE, UNIQUE(FILTER(MoM_Account_Detail[MOVEMENT_TYPE], MoM_Account_Detail[FACILITY_ID]=f)))
+)
+
+
 
 
 
