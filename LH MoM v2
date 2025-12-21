@@ -1,3 +1,84 @@
+📘 Facility_Rollup
+
+LOGIC & METHODOLOGY — FACILITY_ROLLUP
+
+Purpose
+Aggregate account-level Non-Accrual activity to the Facility level for consistent classification and review.
+
+Primary Inputs
+	•	MoM_Account_Detail
+	•	Facility identifiers and attributes
+
+Key Logic Applied
+	•	Rollup of account-level balances and movements to Facility
+	•	Assignment of Movement_Type at the Facility level
+	•	Assignment of Owner at the Facility level based on dominant exposure and movement
+
+Business Rules / Assumptions
+	•	Facility is the authoritative unit for Movement_Type and Owner
+	•	Individual account behavior is subordinated to Facility-level classification
+	•	Conflicting account flags are resolved through aggregation logic
+
+Outputs / How to Use
+Primary driver for Top 30 rankings and executive review.
+
+⸻
+
+📘 Top30_Engine
+
+LOGIC & METHODOLOGY — TOP30_ENGINE
+
+Purpose
+Identify and rank the most material facilities requiring review by Owner and Movement_Type.
+
+Primary Inputs
+	•	Facility_Rollup
+	•	Current and prior Non-Accrual balances
+
+Key Logic Applied
+	•	Filtering to reviewable Movement_Types (e.g., Exit ex-Auto, Downgrade IN ex-Auto)
+	•	Ranking facilities by materiality
+	•	Spill-based Top 30 selection logic
+
+Business Rules / Assumptions
+	•	Rankings are performed at the Facility level
+	•	Ties and edge cases follow deterministic ranking logic
+	•	Only non-Auto driven movements are included
+
+Outputs / How to Use
+Feeds all Top 30 summary and detail tabs.
+
+⸻
+
+📘 Top30_[Owner]_[Movement] (Detail Tabs)
+
+LOGIC & METHODOLOGY — TOP30 FACILITY DETAIL
+
+Purpose
+Provide account-level transparency for Top 30 facilities flagged for review.
+
+Primary Inputs
+	•	Top30_Engine
+	•	MoM_Account_Detail
+
+Key Logic Applied
+	•	Dynamic filtering to selected Top 30 facilities
+	•	Return of only accounts associated with those facilities
+	•	Presentation of current and prior attributes for review
+
+Business Rules / Assumptions
+	•	Accounts inherit Facility-level Movement_Type and Owner
+	•	Presence does not imply independent materiality
+
+Outputs / How to Use
+Used by reviewers to understand why a facility appears in the Top 30 list.
+
+
+
+
+
+
+
 Purpose
 Serve as the granular account-level foundation for all month-over-month Non-Accrual analysis.
 
