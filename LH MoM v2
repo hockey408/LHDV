@@ -1,3 +1,59 @@
+Reviewable NA (Curr) =
+CALCULATE(
+    SUM ( PBI_Feed_FacilityBalance_Current[CURR_SSB_FAC] ),
+    PBI_Feed_FacilityBalance_Current[REVIEWABLE_FLAG_MAX] = 1,
+    REMOVEFILTERS ( PBI_Feed_FacilityReview_Current[MOVEMENT_TYPE] )
+)
+
+Reviewable NA (Curr) =
+CALCULATE(
+    SUM ( PBI_Feed_FacilityBalance_Current[CURR_SSB_FAC] ),
+    PBI_Feed_FacilityBalance_Current[REVIEWABLE_FLAG_MAX] = 1,
+    REMOVEFILTERS ( PBI_Feed_FacilityReview_Current )
+)
+
+Top30 Balance Reviewed (Curr) =
+VAR TopFacilities =
+    CALCULATETABLE(
+        VALUES ( PBI_Feed_FacilityReview_Current[FACILITY_EVENT] ),
+        PBI_Feed_FacilityReview_Current[TOP30_FLAG] = "Y",
+        REMOVEFILTERS ( PBI_Feed_FacilityReview_Current[MOVEMENT_TYPE] )
+    )
+RETURN
+    CALCULATE(
+        SUM ( PBI_Feed_FacilityBalance_Current[CURR_SSB_FAC] ),
+        TREATAS( TopFacilities, PBI_Feed_FacilityBalance_Current[FACILITY_EVENT] )
+    )
+
+Top30 Balance Reviewed (Curr) =
+VAR TopFacilities =
+    CALCULATETABLE(
+        VALUES ( PBI_Feed_FacilityReview_Current[FACILITY_EVENT] ),
+        PBI_Feed_FacilityReview_Current[TOP30_FLAG] = "Y",
+        REMOVEFILTERS ( PBI_Feed_FacilityReview_Current )
+    )
+RETURN
+    CALCULATE(
+        SUM ( PBI_Feed_FacilityBalance_Current[CURR_SSB_FAC] ),
+        TREATAS( TopFacilities, PBI_Feed_FacilityBalance_Current[FACILITY_EVENT] )
+    )
+
+Top30 Movement Reviewed (Abs) =
+VAR TopFacilities =
+    CALCULATETABLE(
+        VALUES ( PBI_Feed_FacilityReview_Current[FACILITY_EVENT] ),
+        PBI_Feed_FacilityReview_Current[TOP30_FLAG] = "Y",
+        REMOVEFILTERS ( PBI_Feed_FacilityReview_Current[MOVEMENT_TYPE] )
+    )
+RETURN
+    CALCULATE(
+        SUM ( PBI_Feed_FacilityBalance_Current[BAL_CHANGE_ABS] ),
+        TREATAS( TopFacilities, PBI_Feed_FacilityBalance_Current[FACILITY_EVENT] )
+    )
+
+
+
+
 =IF(OR([@Owner_Consistency_Flag]="MISMATCH",[@Movement_Consistency_Flag]="MISMATCH"),"EXCEPTION","OK")
 
 
