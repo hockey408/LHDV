@@ -1,3 +1,31 @@
+Reviewed Balance - Downgrade (Top30, Curr Exposure) =
+VAR DowngradeFacilities =
+    CALCULATETABLE(
+        VALUES ( PBI_Feed_FacilityReview_Current[FACILITY_EVENT] ),
+        REMOVEFILTERS ( PBI_Feed_FacilityReview_Current ),
+        PBI_Feed_FacilityReview_Current[MOVEMENT_TYPE] = "Downgrade IN (ex-Auto)"
+    )
+VAR WithExposure =
+    ADDCOLUMNS(
+        DowngradeFacilities,
+        "Exposure",
+            CALCULATE(
+                SUM ( PBI_Feed_FacilityBalance_Current[CURR_SSB_FAC] ),
+                PBI_Feed_FacilityBalance_Current[REVIEWABLE_FLAG_MAX] = 1,
+                TREATAS( DowngradeFacilities, PBI_Feed_FacilityBalance_Current[FACILITY_EVENT] )
+            )
+    )
+VAR TopN =
+    TOPN( 30, WithExposure, [Exposure], DESC )
+RETURN
+    SUMX( TopN, [Exposure] )
+
+
+
+
+
+
+
 Reviewable Balance - Downgrade (Curr Exposure) =
 VAR FacSet =
     CALCULATETABLE(
