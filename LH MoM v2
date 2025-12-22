@@ -1,4 +1,26 @@
-    ReviewDistinct = Table.Distinct(
+Total Downgrade IN (All Coverage) =
+CALCULATE(
+    SUM ( PBI_Feed_FacilityReview_Current[MOM_DELTA_SUM] ),
+    PBI_Feed_FacilityReview_Current[MOVEMENT_GROUP] = "Downgrade IN",
+    REMOVEFILTERS ( PBI_Feed_FacilityReview_Current[REVIEWABLE_FLAG_MAX] ),
+    REMOVEFILTERS ( PBI_Feed_FacilityReview_Current[TOPN_OWNER_FLAG] ),
+    REMOVEFILTERS ( PBI_Feed_FacilityReview_Current[OWNER_EVENT] )
+)
+
+
+Total Exit (All Coverage) =
+CALCULATE(
+    SUM ( PBI_Feed_FacilityReview_Current[MOM_DELTA_SUM] ),
+    PBI_Feed_FacilityReview_Current[MOVEMENT_GROUP] = "Exit",
+    REMOVEFILTERS ( PBI_Feed_FacilityReview_Current[REVIEWABLE_FLAG_MAX] ),
+    REMOVEFILTERS ( PBI_Feed_FacilityReview_Current[TOPN_OWNER_FLAG] ),
+    REMOVEFILTERS ( PBI_Feed_FacilityReview_Current[OWNER_EVENT] )
+)
+
+
+
+
+ReviewDistinct = Table.Distinct(
         ReviewOwnerFiltered,
         {"CURR_EOM_DATE","OWNER_EVENT","MOVEMENT_TYPE","FACILITY_EVENT"}
     ),
