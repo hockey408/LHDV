@@ -1,3 +1,15 @@
+    // --- Remove non-owner buckets that can appear in OWNER_EVENT ---
+    ReviewOwnerFiltered = Table.SelectRows(
+        ReviewFiltered,
+        each not (
+            [OWNER_EVENT] = "NOT COVERED"
+            or Text.StartsWith([OWNER_EVENT], "Not Covered; Under")
+        )
+    ),
+
+
+
+
 Reviewable Balance - Downgrade =
 CALCULATE(
     [Reviewable Balance (Total)],
