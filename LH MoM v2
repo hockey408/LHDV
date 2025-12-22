@@ -1,3 +1,54 @@
+Downgrade IN (% Label) =
+VAR p = [Downgrade IN (% of Prior NA)]
+RETURN IF( ISBLANK(p), BLANK(), FORMAT(p, "0.0%") & " of prior NA" )
+
+Exit (% of Prior NA) =
+DIVIDE( [Exit (Δ)], [NA Balance (Prev)] )
+
+Exit (% Label) =
+VAR p = [Exit (% of Prior NA)]
+RETURN IF( ISBLANK(p), BLANK(), FORMAT(p, "0.0%") & " of prior NA" )
+
+
+Exit Magnitude (% of Prior NA) =
+DIVIDE( ABS([Exit (Δ)]), [NA Balance (Prev)] )
+
+Reviewable Balance (Curr) =
+CALCULATE(
+    SUM ( PBI_Feed_FacilityBalance_Current[CURR_SSB_FAC] ),
+    PBI_Feed_FacilityBalance_Current[REVIEWABLE_FLAG_MAX] = 1,
+    REMOVEFILTERS ( PBI_Feed_FacilityReview_Current )
+)
+
+
+Top30 Reviewed (Balance) =
+VAR TopFacilities =
+    CALCULATETABLE(
+        VALUES ( PBI_Feed_FacilityReview_Current[FACILITY_EVENT] ),
+        PBI_Feed_FacilityReview_Current[TOP30_FLAG] = "Y",
+        REMOVEFILTERS ( PBI_Feed_FacilityReview_Current[MOVEMENT_TYPE] )
+    )
+RETURN
+    CALCULATE(
+        SUM ( PBI_Feed_FacilityBalance_Current[CURR_SSB_FAC] ),
+        TREATAS( TopFacilities, PBI_Feed_FacilityBalance_Current[FACILITY_EVENT] )
+    )
+
+Reviewable (% of Total NA) =
+DIVIDE( [Reviewable Balance (Curr)], [NA Balance (Curr)] )
+
+Top30 (% of Reviewable) =
+DIVIDE( [Top30 Reviewed (Balance)], [Reviewable Balance (Curr)] )
+
+Top30 (% Label) =
+VAR p = [Top30 (% of Reviewable)]
+RETURN IF( ISBLANK(p), BLANK(), FORMAT(p, "0%") & " of reviewable" )
+
+
+
+
+
+
 https://www.swisstransfer.com/d/9ba8fd62-9d29-44f0-87d1-571ea0cb5b7a
 
 
