@@ -1,3 +1,27 @@
+Reviewable Balance - Downgrade =
+CALCULATE(
+    [Reviewable Balance (Total)],
+    PBI_Feed_Reviewable_Summary_Current[MOVEMENT_TYPE] = "Downgrade IN (ex-Auto)"
+)
+
+Reviewable Balance - Exit =
+CALCULATE(
+    [Reviewable Balance (Total)],
+    PBI_Feed_Reviewable_Summary_Current[MOVEMENT_TYPE] = "Exit (ex-Auto)"
+)
+
+
+Reviewed Balance (Total) =
+SUM ( PBI_Feed_Reviewed_Summary_Current[REVIEWED_BALANCE] )
+
+
+Reviewed Coverage % =
+DIVIDE( [Reviewed Balance (Total)], [Reviewable Balance (Total)] )
+
+
+
+
+
 let
     // --- Source queries (must already exist in PQ) ---
     Review = PBI_Feed_FacilityReview_Current,
