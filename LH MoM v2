@@ -1,3 +1,101 @@
+let
+    // --- Source queries (must already exist in PQ) ---
+    Review = PBI_Feed_FacilityReview_Current,
+    Bal    = PBI_Feed_FacilityBalance_Current,
+
+    // --- Keep only what we need from Review table ---
+    ReviewKeep = Table.SelectColumns(
+        Review,
+        {"CURR_EOM_DATE","OWNER_EVENT","MOVEMENT_TYPE","FACILITY_EVENT"}
+    ),
+
+    ReviewTypes = Table.TransformColumnTypes(
+        ReviewKeep,
+        {
+            {"CURR_EOM_DATE", type date},
+            {"OWNER_EVENT", type text},
+            {"MOVEMENT_TYPE", type text},
+            {"FACILITY_EVENT", type text}
+        }
+    ),
+
+    // --- Filter to the two movement types that define "reviewable" ---
+    ReviewFiltered = Table.SelectRows(
+        ReviewTypes,
+        each [MOVEMENT_TYPE] = "Downgrade IN (ex-Auto)"
+          or [MOVEMENT_TYPE] = "Exit (ex-Auto)"
+    ),
+
+    // --- De-dupe so each facility is counted once per (month, owner, movement) ---
+    ReviewDistinct = Table.Distinct(
+        ReviewFiltered,
+        {"CURR_EOM_DATE","OWNER_EVENT","MOVEMENT_TYPE","FACILITY_EVENT"}
+    ),
+
+    // --- Keep only what we need from Balance table ---
+    BalKeep = Table.SelectColumns(
+        Bal,
+        {"CURR_EOM_DATE","FACILITY_EVENT","CURR_SSB_FAC","PREV_SSB_FAC","REVIEWABLE_FLAG_MAX"}
+    ),
+
+    BalTypes = Table.TransformColumnTypes(
+        BalKeep,
+        {
+            {"CURR_EOM_DATE", type date},
+            {"FACILITY_EVENT", type text},
+            {"CURR_SSB_FAC", type number},
+            {"PREV_SSB_FAC", type number},
+            {"REVIEWABLE_FLAG_MAX", Int64.Type}
+        }
+    ),
+
+    // --- Filter to reviewable_flag = 1 (your definition) ---
+    BalReviewableOnly = Table.SelectRows(BalTypes, each [REVIEWABLE_FLAG_MAX] = 1),
+
+    // --- Join Review -> Balance on (month, facility) ---
+    Joined = Table.NestedJoin(
+        ReviewDistinct,
+        {"CURR_EOM_DATE","FACILITY_EVENT"},
+        BalReviewableOnly,
+        {"CURR_EOM_DATE","FACILITY_EVENT"},
+        "Bal",
+        JoinKind.Inner
+    ),
+
+    Expanded = Table.ExpandTableColumn(
+        Joined,
+        "Bal",
+        {"CURR_SSB_FAC","PREV_SSB_FAC"},
+        {"CURR_SSB_FAC","PREV_SSB_FAC"}
+    ),
+
+    // --- Exposure basis logic: Downgrade uses Curr, Exit uses Prev ---
+    AddExposure = Table.AddColumn(
+        Expanded,
+        "REVIEWABLE_BALANCE",
+        each
+            if [MOVEMENT_TYPE] = "Downgrade IN (ex-Auto)" then [CURR_SSB_FAC]
+            else if [MOVEMENT_TYPE] = "Exit (ex-Auto)" then [PREV_SSB_FAC]
+            else null,
+        type number
+    ),
+
+    // --- Aggregate to summary grain (month, owner, movement) ---
+    Summary = Table.Group(
+        AddExposure,
+        {"CURR_EOM_DATE","OWNER_EVENT","MOVEMENT_TYPE"},
+        {{"REVIEWABLE_BALANCE", each List.Sum([REVIEWABLE_BALANCE]), type number}}
+    ),
+
+    // --- Add refresh timestamp ---
+    AddRunTs = Table.AddColumn(Summary, "RUN_TIMESTAMP", each DateTime.LocalNow(), type datetime)
+
+in
+    AddRunTs
+
+
+
+
 Reviewed Balance - Downgrade (Top30, Curr Exposure) =
 VAR DowngradeFacilities =
     CALCULATETABLE(
