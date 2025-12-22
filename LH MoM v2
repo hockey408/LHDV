@@ -1,3 +1,43 @@
+Reviewable Balance - Downgrade (Curr Exposure) =
+VAR FacSet =
+    CALCULATETABLE(
+        VALUES ( PBI_Feed_FacilityReview_Current[FACILITY_EVENT] ),
+        REMOVEFILTERS ( PBI_Feed_FacilityReview_Current ),
+        PBI_Feed_FacilityReview_Current[MOVEMENT_TYPE] = "Downgrade IN (ex-Auto)"
+    )
+RETURN
+    CALCULATE(
+        SUM ( PBI_Feed_FacilityBalance_Current[CURR_SSB_FAC] ),
+        PBI_Feed_FacilityBalance_Current[REVIEWABLE_FLAG_MAX] = 1,
+        TREATAS( FacSet, PBI_Feed_FacilityBalance_Current[FACILITY_EVENT] )
+    )
+
+
+Reviewable Balance - Exit (Prev Exposure) =
+VAR FacSet =
+    CALCULATETABLE(
+        VALUES ( PBI_Feed_FacilityReview_Current[FACILITY_EVENT] ),
+        REMOVEFILTERS ( PBI_Feed_FacilityReview_Current ),
+        PBI_Feed_FacilityReview_Current[MOVEMENT_TYPE] = "Exit (ex-Auto)"
+    )
+RETURN
+    CALCULATE(
+        SUM ( PBI_Feed_FacilityBalance_Current[PREV_SSB_FAC] ),
+        PBI_Feed_FacilityBalance_Current[REVIEWABLE_FLAG_MAX] = 1,
+        TREATAS( FacSet, PBI_Feed_FacilityBalance_Current[FACILITY_EVENT] )
+    )
+
+
+Reviewable Balance (Total) =
+[Reviewable Balance - Downgrade (Curr Exposure)] +
+[Reviewable Balance - Exit (Prev Exposure)]
+
+
+
+
+
+
+
 Downgrade IN (% Label) =
 VAR p = [Downgrade IN (% of Prior NA)]
 RETURN IF( ISBLANK(p), BLANK(), FORMAT(p, "0.0%") & " of prior NA" )
