@@ -1,3 +1,69 @@
+Purpose
+Identify and quantify Negative Non-Accrual balances that impact period-end exposure and reconciliation views.
+
+Primary Inputs
+
+Netezza SQL extract (tbl_Neg_NA)
+
+Month-end Non-Accrual account attributes
+
+Facility identifiers
+
+Key Logic Applied
+
+SQL identifies accounts with negative Non-Accrual balances as of month-end
+
+Data is aligned to the same Facility keys used across the workbook
+
+No Movement_Type or Owner classification is derived on this tab
+
+Business Rules / Assumptions
+
+Negative balances are reported for transparency and reconciliation
+
+Neg_NA balances do not independently drive Top 30 facility selection
+
+Classification fields (if present) are inherited from SQL logic upstream
+
+Outputs / How to Use
+Used as supporting context for Executive Summary totals and reconciliation review.
+
+
+
+
+Purpose
+Surface current-period charge-off activity that affects Non-Accrual balances and movement interpretation.
+
+Primary Inputs
+
+Netezza SQL extract (tbl_Chargeoff)
+
+Month-to-date charge-off amounts
+
+Facility and account identifiers
+
+Key Logic Applied
+
+SQL calculates charge-off amounts for the current reporting period
+
+Charge-off data is associated to Facility identifiers for aggregation
+
+No Movement_Type or Owner classification is recalculated on this tab
+
+Business Rules / Assumptions
+
+Charge-offs are presented as explanatory context, not as drivers of Top 30 ranking
+
+Timing differences may exist between Non-Accrual exits and charge-off recognition
+
+Outputs / How to Use
+Used to explain reductions in Non-Accrual exposure and support executive commentary.
+
+
+
+
+
+
 Reviewable NA (Curr) =
 CALCULATE(
     SUM ( PBI_Feed_FacilityBalance_Current[CURR_SSB_FAC] ),
