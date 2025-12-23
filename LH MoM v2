@@ -11,6 +11,69 @@
   dCasey, Top30_Engine!$AI$14#,
   eCasey, Top30_Engine!$AI$55#,
 
+  empty6, TAKE(SEQUENCE(1,6),0),
+
+  mk, LAMBDA(owner, movement, rng,
+    LET(
+      r, IFERROR(rng, TAKE(SEQUENCE(1,2),0)),
+      col2ok, IFERROR(INDEX(r,1,2), NA()),
+      IF(
+        ISNA(col2ok),
+        empty6,
+        LET(
+          n, ROWS(r),
+          IF(
+            n=0,
+            empty6,
+            HSTACK(
+              MAKEARRAY(n,1,LAMBDA(x,y,eom)),
+              MAKEARRAY(n,1,LAMBDA(x,y,owner)),
+              MAKEARRAY(n,1,LAMBDA(x,y,movement)),
+              CHOOSECOLS(r,1),
+              CHOOSECOLS(r,2),
+              SEQUENCE(n)
+            )
+          )
+        )
+      )
+    )
+  ),
+
+  IFERROR(
+    VSTACK(
+      mk("Samya","Downgrade IN (ex-Auto)", dSamya),
+      mk("Samya","Exit (ex-Auto)", eSamya),
+      mk("Connor","Downgrade IN (ex-Auto)", dConnor),
+      mk("Connor","Exit (ex-Auto)", eConnor),
+      mk("Daniel","Downgrade IN (ex-Auto)", dDaniel),
+      mk("Daniel","Exit (ex-Auto)", eDaniel),
+      mk("Eleanor","Downgrade IN (ex-Auto)", dEleanor),
+      mk("Eleanor","Exit (ex-Auto)", eEleanor),
+      mk("Casey","Downgrade IN (ex-Auto)", dCasey),
+      mk("Casey","Exit (ex-Auto)", eCasey)
+    ),
+    empty6
+  )
+)
+
+
+
+
+
+
+=LET(
+  eom, Top30_Engine!$B$5,
+  dSamya, Top30_Engine!$AA$14#,
+  eSamya, Top30_Engine!$AA$55#,
+  dConnor, Top30_Engine!$A$14#,
+  eConnor, Top30_Engine!$A$55#,
+  dDaniel, Top30_Engine!$J$14#,
+  eDaniel, Top30_Engine!$R$14#,
+  dEleanor, Top30_Engine!$AQ$14#,
+  eEleanor, Top30_Engine!$AQ$55#,
+  dCasey, Top30_Engine!$AI$14#,
+  eCasey, Top30_Engine!$AI$55#,
+
   mk, LAMBDA(owner, movement, rng,
     LET(
       r, IFERROR(rng, TAKE(SEQUENCE(1,2),0)),          /* always an array */
