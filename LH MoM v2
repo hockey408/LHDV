@@ -1,3 +1,32 @@
+=LET(
+  eom, Top30_Engine!$B$2,
+  dSamya, Top30_Engine!$A$7#, 
+  eSamya, Top30_Engine!$H$7#,
+
+  mk, LAMBDA(owner, movement, rng,
+    IF(ROWS(rng)=0,"",
+      HSTACK(
+        MAKEARRAY(ROWS(rng),1,LAMBDA(r,c,eom)),
+        MAKEARRAY(ROWS(rng),1,LAMBDA(r,c,owner)),
+        MAKEARRAY(ROWS(rng),1,LAMBDA(r,c,movement)),
+        CHOOSECOLS(rng,1),              /* FACILITY_EVENT col */
+        CHOOSECOLS(rng,2),              /* EXPOSURE_BASIS col */
+        SEQUENCE(ROWS(rng))             /* OWNER_RANK */
+      )
+    )
+  ),
+
+  VSTACK(
+    mk("Samya","Downgrade IN (ex-Auto)", dSamya),
+    mk("Samya","Exit (ex-Auto)", eSamya)
+  )
+)
+
+
+
+
+
+
 let
     // ============================================================
     // 0) Sources
