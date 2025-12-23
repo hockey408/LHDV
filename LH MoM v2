@@ -1,3 +1,35 @@
+Waterfall_Axis =
+DATATABLE (
+    "Step", STRING,
+    "SortOrder", INTEGER,
+    "BarType", STRING,
+    {
+        {"Beginning Balance", 1, "Start"},
+        {"Downgrade IN",      2, "Change"},
+        {"Exit",              3, "Change"},
+        {"Other",             4, "Change"},
+        {"Ending Balance",    5, "End"}
+    }
+)
+
+WF - Amount :=
+SWITCH(
+    SELECTEDVALUE(Waterfall_Axis[Step]),
+    "Beginning Balance", [KPI - Total Previous Portfolio Balance],
+    "Downgrade IN",      [KPI - Downgrade IN Total (All)],
+    "Exit",              - [KPI - Exit Total (All, Abs)],
+    "Other",
+        [KPI - Total Current Portfolio Balance]
+        - [KPI - Total Previous Portfolio Balance]
+        - [KPI - Downgrade IN Total (All)]
+        + [KPI - Exit Total (All, Abs)],
+    "Ending Balance",    [KPI - Total Current Portfolio Balance]
+)
+
+
+
+
+
 Waterfall Bar Color :=
 VAR Step =
     SELECTEDVALUE ( Waterfall_Axis[Step] )
