@@ -1,5 +1,31 @@
 mk, LAMBDA(owner, movement, rng,
   LET(
+    r, IFERROR(rng, ""),
+    empty6, DROP(SEQUENCE(1,6),1),         /* 0 rows x 6 cols */
+    IF(
+      OR(r="", IFERROR(ROWS(r),0)=0),
+      empty6,
+      LET(
+        n, ROWS(r),
+        HSTACK(
+          MAKEARRAY(n,1,LAMBDA(x,y,eom)),
+          MAKEARRAY(n,1,LAMBDA(x,y,owner)),
+          MAKEARRAY(n,1,LAMBDA(x,y,movement)),
+          CHOOSECOLS(r,1),
+          CHOOSECOLS(r,2),
+          SEQUENCE(n)
+        )
+      )
+    )
+  )
+),
+
+
+
+
+
+mk, LAMBDA(owner, movement, rng,
+  LET(
     r, IFERROR(rng,""),
     IF( OR(r="", ROWS(r)=0),
       "",
