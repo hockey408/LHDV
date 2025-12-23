@@ -1,5 +1,29 @@
 mk, LAMBDA(owner, movement, rng,
   LET(
+    r, IFERROR(rng, TAKE(SEQUENCE(1,2),0)),          /* ALWAYS 2-col array */
+    n, ROWS(r),
+    empty6, TAKE(SEQUENCE(1,6),0),                   /* ALWAYS 6-col empty array */
+    IF(
+      n=0,
+      empty6,
+      HSTACK(
+        MAKEARRAY(n,1,LAMBDA(x,y,eom)),
+        MAKEARRAY(n,1,LAMBDA(x,y,owner)),
+        MAKEARRAY(n,1,LAMBDA(x,y,movement)),
+        CHOOSECOLS(r,1),
+        CHOOSECOLS(r,2),
+        SEQUENCE(n)
+      )
+    )
+  )
+),
+
+
+
+
+
+mk, LAMBDA(owner, movement, rng,
+  LET(
     r, IFERROR(rng, ""),
     empty6, DROP(SEQUENCE(1,6),1),         /* 0 rows x 6 cols */
     IF(
