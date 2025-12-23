@@ -1,3 +1,100 @@
+let
+    Source = Excel.CurrentWorkbook(){[Name="tbl_AUX_Topsides_Raw"]}[Content],
+
+    // Clean column names (remove line breaks / extra spaces)
+    CleanCols = Table.TransformColumnNames(Source, each Text.Trim(Text.Replace(_, "#(lf)", " "))),
+
+    // Rename AUX headers -> standardized names
+    Renamed = Table.RenameColumns(
+        CleanCols,
+        {
+            {"Data Period", "ME_DATE"},
+            {"Facility ID", "FACILITY_ID"},
+            {"Account_key", "ACCOUNT_KEY"},
+            {"Account Identifier (Key Field; Unique)", "ACCOUNT_IDENTIFIER"},
+            {"Source System ID (Key field)", "SOURCE_SYSTEM_ID"},
+            {"NON_ACCRUAL_DATE", "NON_ACCRUAL_DATE"},
+            {"NON_ACCRUAL_FLAG (Y/N)", "NON_ACCRUAL_FLAG"},
+            {"Line of Business", "LOB"},
+            {"Obligor Name", "OBLIGOR_NAME"},
+            {"Type of Requested Change", "REQUESTED_CHANGE"},
+            {"Reason for requested change", "REQUEST_REASON"},
+            {"Comments", "COMMENTS"},
+            {"Reference Report", "REFERENCE_REPORT"},
+            {"Name of the Requestor", "REQUESTOR"},
+            {"Balance", "BALANCE_RAW"}
+        },
+        MissingField.Ignore
+    ),
+
+    // Type handling (Balance may come as text)
+    Types = Table.TransformColumnTypes(
+        Renamed,
+        {
+            {"ME_DATE", type date},
+            {"FACILITY_ID", type text},
+            {"ACCOUNT_KEY", type text},
+            {"ACCOUNT_IDENTIFIER", type text},
+            {"SOURCE_SYSTEM_ID", type text},
+            {"NON_ACCRUAL_DATE", type date},
+            {"NON_ACCRUAL_FLAG", type text},
+            {"LOB", type text},
+            {"OBLIGOR_NAME", type text},
+            {"REQUESTED_CHANGE", type text},
+            {"REQUEST_REASON", type text},
+            {"COMMENTS", type text},
+            {"REFERENCE_REPORT", type text},
+            {"REQUESTOR", type text},
+            {"BALANCE_RAW", type any}
+        }
+    ),
+
+    // Parse balance robustly
+    BalanceNum = Table.AddColumn(
+        Types,
+        "BALANCE_ABS",
+        each
+            let
+                t = try Text.Trim(Text.From([BALANCE_RAW])) otherwise "",
+                t2 = Text.Replace(Text.Replace(Text.Replace(t, ",", ""), "$", ""), "(", "-"),
+                t3 = Text.Replace(t2, ")", ""),
+                n = try Number.FromText(t3) otherwise null
+            in
+                if n = null then null else Number.Abs(n),
+        type number
+    ),
+
+    // Determine sign from requested change
+    Sign = Table.AddColumn(
+        BalanceNum,
+        "TOPSIDE_SIGN",
+        each
+            let rc = Text.Lower(Text.From([REQUESTED_CHANGE]))
+            in
+                if Text.Contains(rc, "remove") then -1
+                else if Text.Contains(rc, "add") then 1
+                else 1,
+        Int64.Type
+    ),
+
+    // Signed topside amount
+    Topsided = Table.AddColumn(
+        Sign,
+        "TOPSIDE_AMOUNT",
+        each if [BALANCE_ABS] = null then null else [BALANCE_ABS] * [TOPSIDE_SIGN],
+        type number
+    ),
+
+    // Optional: drop raw balance column
+    DropRaw = Table.RemoveColumns(Topsided, {"BALANCE_RAW"}),
+
+    AddRunTs = Table.AddColumn(DropRaw, "QUERY_RUN_TIMESTAMP", each DateTime.LocalNow(), type datetime)
+in
+    AddRunTs
+
+
+
+
 
 
 Hdr - Title :=
