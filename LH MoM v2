@@ -1,3 +1,34 @@
+Waterfall_Axis =
+DATATABLE (
+    "Step", STRING,
+    "SortOrder", INTEGER,
+    {
+        {"Beginning Balance", 1},
+        {"Downgrade IN", 2},
+        {"Exit", 3},
+        {"Other", 4},
+        {"Ending Balance", 5}
+    }
+)
+
+
+SortOrder =
+SWITCH(
+  Waterfall_Axis[Step],
+  "Beginning Balance", 1,
+  "Downgrade IN", 2,
+  "Exit", 3,
+  "Other", 4,
+  "Ending Balance", 5,
+  99
+)
+
+
+
+
+
+
+
 Waterfall - Other (Net) :=
 VAR Prev = [Beginning Balance]
 VAR Curr = [Ending Balance]
