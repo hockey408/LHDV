@@ -6,6 +6,31 @@ DATATABLE (
         {"Beginning Balance", 1},
         {"Downgrade IN", 2},
         {"Exit", 3},
+        {"Other", 4}
+    }
+)
+
+Waterfall Amount :=
+SWITCH (
+    SELECTEDVALUE ( Waterfall_Axis[Step] ),
+    "Beginning Balance", [Beginning Balance],
+    "Downgrade IN", [Waterfall - Downgrade IN],
+    "Exit", [Waterfall - Exit],
+    "Other", [Waterfall - Other (Net)]
+)
+
+
+
+
+
+Waterfall_Axis =
+DATATABLE (
+    "Step", STRING,
+    "SortOrder", INTEGER,
+    {
+        {"Beginning Balance", 1},
+        {"Downgrade IN", 2},
+        {"Exit", 3},
         {"Other", 4},
         {"Ending Balance", 5}
     }
