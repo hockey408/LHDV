@@ -1,3 +1,15 @@
+Reviewable $ (By Owner) :=
+VAR OwnerSelected =
+    VALUES ( Dim_Owner[OWNER_EVENT] )
+RETURN
+CALCULATE (
+    SUM ( PBI_Feed_Reviewable_Summary_Current[REVIEWABLE_BALANCE] ),
+    TREATAS ( OwnerSelected, PBI_Feed_Reviewable_Summary_Current[OWNER_EVENT] )
+)
+
+
+
+
 Reviewed $ (By Owner) :=
 VAR OwnerSelected =
     VALUES ( Dim_Owner[OWNER_EVENT] )
