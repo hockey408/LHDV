@@ -1,3 +1,27 @@
+
+
+Hdr - Title :=
+"Non-Accrual Portfolio Executive Snapshot"
+
+Hdr - As Of :=
+VAR d =
+    MAX ( PBI_Feed_Portfolio_Summary_Current[ME_DATE] )
+RETURN
+"Month End: " & FORMAT ( d, "mmm d, yyyy" )
+
+Hdr - Data Refreshed :=
+VAR ts =
+    MAX ( PBI_Feed_Movement_Summary_All_Current[QUERY_RUN_TIMESTAMP] )
+RETURN
+"Data refreshed: " & FORMAT ( ts, "mmm d, yyyy h:mm AM/PM" )
+
+
+
+Hdr - Subtitle :=
+[Hdr - As Of] & "  •  " & [Hdr - Data Refreshed]
+
+
+
 Waterfall_Axis =
 DATATABLE (
     "Step", STRING,
