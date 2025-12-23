@@ -1,3 +1,13 @@
+KPI - Reviewable Facilities :=
+CALCULATE(
+    DISTINCTCOUNT( PBI_Feed_FacilityBalance_Current[FACILITY_EVENT] ),
+    PBI_Feed_FacilityBalance_Current[REVIEWABLE_FLAG_MAX] = 1
+)
+
+
+
+
+
 KPI - Reviewable Facilities (Target Movements) :=
 CALCULATE(
     DISTINCTCOUNT( PBI_Feed_FacilityBalance_Current[FACILITY_EVENT] ),
