@@ -1,3 +1,15 @@
+Dim_Owner =
+DISTINCT (
+    UNION (
+        SELECTCOLUMNS ( PBI_Feed_Facility_Review_Current, "OWNER_EVENT", PBI_Feed_Facility_Review_Current[OWNER_EVENT] ),
+        SELECTCOLUMNS ( PBI_Feed_Reviewable_Summary_Current, "OWNER_EVENT", PBI_Feed_Reviewable_Summary_Current[OWNER_EVENT] )
+    )
+)
+
+
+
+
+
 let
     Source = Excel.CurrentWorkbook(){[Name="tbl_AUX_Topsides_Raw"]}[Content],
 
