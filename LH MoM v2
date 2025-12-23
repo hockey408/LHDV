@@ -1,3 +1,37 @@
+let
+    Source = pq_Facility_Rollup_All,
+
+    // Keep only what we need
+    KeepCols = Table.SelectColumns(
+        Source,
+        {"ME_DATE", "MOVEMENT_TYPE", "MOM_DELTA_SUM"}
+    ),
+
+    Types = Table.TransformColumnTypes(
+        KeepCols,
+        {
+            {"ME_DATE", type date},
+            {"MOVEMENT_TYPE", type text},
+            {"MOM_DELTA_SUM", type number}
+        }
+    ),
+
+    // Group to movement totals (this preserves Autochange + Not Covered + everything)
+    Grouped = Table.Group(
+        Types,
+        {"ME_DATE", "MOVEMENT_TYPE"},
+        {{"MOM_DELTA_SUM", each List.Sum([MOM_DELTA_SUM]), type number}}
+    ),
+
+    AddRunTs = Table.AddColumn(Grouped, "QUERY_RUN_TIMESTAMP", each DateTime.LocalNow(), type datetime)
+in
+    AddRunTs
+
+
+
+
+
+
 = Table.SelectRows(#"Previous Step", each [FACILITY_EVENT] <> null and Text.Trim(Text.From([FACILITY_EVENT])) <> "")
 
 
