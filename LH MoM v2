@@ -1,3 +1,26 @@
+let
+    Source = Excel.CurrentWorkbook(){[Name="rng_PBI_Feed_Facility_Review_Current"]}[Content],
+    PromoteHeaders = Table.PromoteHeaders(Source, [PromoteAllScalars=true]),
+    Types = Table.TransformColumnTypes(
+        PromoteHeaders,
+        {
+            {"CURR_EOM_DATE", type date},
+            {"OWNER_EVENT", type text},
+            {"MOVEMENT_TYPE", type text},
+            {"FACILITY_EVENT", type text},
+            {"EXPOSURE_BASIS", type number},
+            {"OWNER_RANK", Int64.Type}
+        }
+    ),
+    AddTopNFlag = Table.AddColumn(Types, "TOPN_OWNER_FLAG", each "Y", type text),
+    AddRunTs = Table.AddColumn(AddTopNFlag, "RUN_TIMESTAMP", each DateTime.LocalNow(), type datetime)
+in
+    AddRunTs
+
+
+
+
+
 =LET(
   eom, Top30_Engine!$B$5,
   dSamya, Top30_Engine!$AA$14#,
