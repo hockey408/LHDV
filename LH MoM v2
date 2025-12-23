@@ -1,5 +1,35 @@
 TopMovers_Base =
 SELECTCOLUMNS(
+    PBI_Feed_Facility_Rollup_All_Current,   -- use your actual table name in PBI
+    "FACILITY_EVENT", PBI_Feed_Facility_Rollup_All_Current[FACILITY_EVENT],
+    "OWNER_EVENT",    PBI_Feed_Facility_Rollup_All_Current[OWNER_EVENT],
+    "MOVEMENT_TYPE",  PBI_Feed_Facility_Rollup_All_Current[MOVEMENT_TYPE],
+    "MOM_DELTA",      PBI_Feed_Facility_Rollup_All_Current[MOM_DELTA_SUM],
+    "MAGNITUDE",      ABS(PBI_Feed_Facility_Rollup_All_Current[MOM_DELTA_SUM])
+)
+
+Reviewed? :=
+VAR Fac = TopMovers_Base[FACILITY_EVENT]
+VAR Own = TopMovers_Base[OWNER_EVENT]
+VAR Mt  = TopMovers_Base[MOVEMENT_TYPE]
+RETURN
+IF(
+    CALCULATE(
+        COUNTROWS(PBI_Feed_Facility_Review_Current),
+        PBI_Feed_Facility_Review_Current[FACILITY_EVENT] = Fac,
+        PBI_Feed_Facility_Review_Current[OWNER_EVENT] = Own,
+        PBI_Feed_Facility_Review_Current[MOVEMENT_TYPE] = Mt
+    ) > 0,
+    "Y",
+    "N"
+)
+
+
+
+
+
+TopMovers_Base =
+SELECTCOLUMNS(
     PBI_Feed_FacilityBalance_Current,
     "FACILITY_EVENT", PBI_Feed_FacilityBalance_Current[FACILITY_EVENT],
     "OWNER_EVENT",    PBI_Feed_FacilityBalance_Current[OWNER_EVENT],
