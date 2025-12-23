@@ -1,4 +1,43 @@
-    AddJoinKeys_Fac = Table.AddColumn(OwnerFiltered, "ME_DATE_KEY", each Date.From([ME_DATE]), type date),
+// --- Normalize join keys on facility side (the table you are ranking) ---
+AddJoinKeys_Fac1 = Table.AddColumn(AddExposureBasis, "ME_DATE_KEY", each Date.From([ME_DATE]), type date),
+AddJoinKeys_Fac2 = Table.AddColumn(AddJoinKeys_Fac1, "OWNER_KEY", each Text.Upper(Text.Trim([OWNER_EVENT])), type text),
+AddJoinKeys_Fac3 = Table.AddColumn(AddJoinKeys_Fac2, "MOVEMENT_KEY", each Text.Trim([MOVEMENT_TYPE]), type text),
+
+ReviewedSummaryKeys1 = Table.AddColumn(ReviewedSummary, "CURR_EOM_DATE_KEY", each Date.From([CURR_EOM_DATE]), type date),
+ReviewedSummaryKeys2 = Table.AddColumn(ReviewedSummaryKeys1, "OWNER_KEY", each Text.Upper(Text.Trim([OWNER_EVENT])), type text),
+ReviewedSummaryKeys3 = Table.AddColumn(ReviewedSummaryKeys2, "MOVEMENT_KEY", each Text.Trim([MOVEMENT_TYPE]), type text),
+
+
+JoinedTopN = Table.NestedJoin(
+    AddJoinKeys_Fac3,
+    {"ME_DATE_KEY","OWNER_KEY","MOVEMENT_KEY"},
+    ReviewedSummaryKeys3,
+    {"CURR_EOM_DATE_KEY","OWNER_KEY","MOVEMENT_KEY"},
+    "ReviewedCfg",
+    JoinKind.LeftOuter
+),
+
+ExpandedTopN = Table.ExpandTableColumn(
+    JoinedTopN,
+    "ReviewedCfg",
+    {"TOPN_USED"},
+    {"TOPN_LIMIT"}
+),
+
+AddTopNDefault = Table.AddColumn(
+    ExpandedTopN,
+    "TOPN_LIMIT_FINAL",
+    each if [TOPN_LIMIT] <> null then [TOPN_LIMIT] else 30,
+    Int64.Type
+),
+
+JoinHit = Table.AddColumn(ExpandedTopN, "TOPN_JOIN_HIT", each if [TOPN_LIMIT] <> null then 1 else 0, Int64.Type),
+
+
+
+
+
+AddJoinKeys_Fac = Table.AddColumn(OwnerFiltered, "ME_DATE_KEY", each Date.From([ME_DATE]), type date),
     AddJoinKeys_Fac2 = Table.AddColumn(AddJoinKeys_Fac, "OWNER_KEY", each Text.Upper(Text.Trim([OWNER_EVENT])), type text),
     AddJoinKeys_Fac3 = Table.AddColumn(AddJoinKeys_Fac2, "MOVEMENT_KEY", each Text.Trim([MOVEMENT_TYPE]), type text),
 
