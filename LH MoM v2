@@ -1,3 +1,18 @@
+Reviewed $ (By Owner) :=
+VAR OwnerSelected =
+    VALUES ( Dim_Owner[OWNER_EVENT] )
+RETURN
+CALCULATE (
+    SUM ( PBI_Feed_Facility_Review_Current[EXPOSURE_BASIS] ),
+    TREATAS ( OwnerSelected, PBI_Feed_Facility_Review_Current[OWNER_EVENT] )
+)
+
+Coverage % (By Owner) :=
+DIVIDE ( [Reviewed $ (By Owner)], [Reviewable $ (By Owner)] )
+
+
+
+
 Dim_Owner =
 VAR R =
     UNION (
