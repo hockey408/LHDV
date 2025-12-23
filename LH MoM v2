@@ -1,3 +1,24 @@
+mk, LAMBDA(owner, movement, rng,
+  LET(
+    r, IFERROR(rng,""),
+    IF( OR(r="", ROWS(r)=0),
+      "",
+      HSTACK(
+        MAKEARRAY(ROWS(r),1,LAMBDA(x,y,eom)),
+        MAKEARRAY(ROWS(r),1,LAMBDA(x,y,owner)),
+        MAKEARRAY(ROWS(r),1,LAMBDA(x,y,movement)),
+        CHOOSECOLS(r,1),
+        CHOOSECOLS(r,2),
+        SEQUENCE(ROWS(r))
+      )
+    )
+  )
+),
+
+
+
+
+
 =LET(
   eom, Top30_Engine!$B$2,
   dSamya, Top30_Engine!$A$7#, 
