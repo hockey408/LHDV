@@ -1,4 +1,26 @@
 Dim_Owner =
+VAR R =
+    UNION (
+        SELECTCOLUMNS (
+            PBI_Feed_Facility_Review_Current,
+            "OWNER_EVENT", TRIM ( PBI_Feed_Facility_Review_Current[OWNER_EVENT] )
+        ),
+        SELECTCOLUMNS (
+            PBI_Feed_Reviewable_Summary_Current,
+            "OWNER_EVENT", TRIM ( PBI_Feed_Reviewable_Summary_Current[OWNER_EVENT] )
+        )
+    )
+RETURN
+    FILTER (
+        DISTINCT ( R ),
+        NOT ISBLANK ( [OWNER_EVENT] ) && [OWNER_EVENT] <> ""
+    )
+
+
+
+
+
+Dim_Owner =
 DISTINCT (
     UNION (
         SELECTCOLUMNS ( PBI_Feed_Facility_Review_Current, "OWNER_EVENT", PBI_Feed_Facility_Review_Current[OWNER_EVENT] ),
