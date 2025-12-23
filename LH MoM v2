@@ -3,6 +3,317 @@ let
     // 0) Sources
     // ============================================================
     Source = pq_Facility_Rollup_All,
+    ReviewedSummaryRaw = Excel.CurrentWorkbook(){[Name="PBI_Feed_Reviewed_Summary_Current"]}[Content],
+
+    // ============================================================
+    // 1) Reviewed Summary: Types + Clean Keys
+    // ============================================================
+    ReviewedSummaryTypes =
+        Table.TransformColumnTypes(
+            ReviewedSummaryRaw,
+            {
+                {"CURR_EOM_DATE", type any},  // we'll coerce robustly below
+                {"OWNER_EVENT", type text},
+                {"MOVEMENT_TYPE", type text},
+                {"TOPN_USED", Int64.Type},
+                {"REVIEWED_BALANCE", type number}
+            }
+        ),
+
+    // Robust date coercion (handles text/date/datetime)
+    ReviewedSummaryDateKey =
+        Table.AddColumn(
+            ReviewedSummaryTypes,
+            "CURR_EOM_DATE_KEY",
+            each
+                let v = [CURR_EOM_DATE]
+                in
+                    if v is date then v
+                    else if v is datetime then Date.From(v)
+                    else try Date.From(v) otherwise try Date.FromText(Text.From(v)) otherwise null,
+            type date
+        ),
+
+    ReviewedSummaryOwnerKey =
+        Table.AddColumn(
+            ReviewedSummaryDateKey,
+            "OWNER_KEY",
+            each Text.Upper(Text.Trim(Text.Clean([OWNER_EVENT]))),
+            type text
+        ),
+
+    ReviewedSummaryMovementKey =
+        Table.AddColumn(
+            ReviewedSummaryOwnerKey,
+            "MOVEMENT_KEY",
+            each Text.Trim(Text.Clean([MOVEMENT_TYPE])),
+            type text
+        ),
+
+    ReviewedSummarySlim =
+        Table.SelectColumns(
+            ReviewedSummaryMovementKey,
+            {"CURR_EOM_DATE_KEY","OWNER_KEY","MOVEMENT_KEY","TOPN_USED"}
+        ),
+
+    // Determine "current month" from the reviewed summary (max date)
+    SummaryMaxDate =
+        List.Max(List.RemoveNulls(ReviewedSummarySlim[CURR_EOM_DATE_KEY])),
+
+    // Create fallback lookup table for current month: (OWNER_KEY, MOVEMENT_KEY) -> TOPN_USED
+    ReviewedSummaryCurrentMonth =
+        Table.SelectRows(ReviewedSummarySlim, each [CURR_EOM_DATE_KEY] = SummaryMaxDate),
+
+    ReviewedSummaryLookup =
+        Table.Distinct(
+            Table.SelectColumns(ReviewedSummaryCurrentMonth, {"OWNER_KEY","MOVEMENT_KEY","TOPN_USED"}),
+            {"OWNER_KEY","MOVEMENT_KEY"}
+        ),
+
+    // ============================================================
+    // 2) Base facility movement set: select, type, filter
+    // ============================================================
+    BaseKeep =
+        Table.SelectColumns(
+            Source,
+            {
+                "ME_DATE","BANK_EVENT","FACILITY_EVENT","OWNER_EVENT","MOVEMENT_TYPE",
+                "PREV_SSB_SUM","CURR_SSB_SUM","MOM_DELTA_SUM","REVIEWABLE_FLAG_MAX"
+            }
+        ),
+
+    BaseTypes =
+        Table.TransformColumnTypes(
+            BaseKeep,
+            {
+                {"ME_DATE", type any},  // robust date handling below
+                {"BANK_EVENT", type text},
+                {"FACILITY_EVENT", type text},
+                {"OWNER_EVENT", type text},
+                {"MOVEMENT_TYPE", type text},
+                {"PREV_SSB_SUM", type number},
+                {"CURR_SSB_SUM", type number},
+                {"MOM_DELTA_SUM", type number},
+                {"REVIEWABLE_FLAG_MAX", Int64.Type}
+            }
+        ),
+
+    // Only review movements
+    MovementFiltered =
+        Table.SelectRows(
+            BaseTypes,
+            each [MOVEMENT_TYPE] = "Downgrade IN (ex-Auto)"
+              or [MOVEMENT_TYPE] = "Exit (ex-Auto)"
+        ),
+
+    // Remove pseudo-owners
+    OwnerFiltered =
+        Table.SelectRows(
+            MovementFiltered,
+            each not (
+                [OWNER_EVENT] = "NOT COVERED"
+                or Text.StartsWith([OWNER_EVENT], "Not Covered; Under")
+            )
+        ),
+
+    // Exposure basis for ranking
+    AddExposureBasis =
+        Table.AddColumn(
+            OwnerFiltered,
+            "EXPOSURE_BASIS",
+            each
+                if [MOVEMENT_TYPE] = "Downgrade IN (ex-Auto)" then [CURR_SSB_SUM]
+                else if [MOVEMENT_TYPE] = "Exit (ex-Auto)" then [PREV_SSB_SUM]
+                else null,
+            type number
+        ),
+
+    // ============================================================
+    // 3) Facility-side keys (robust date + clean text)
+    // ============================================================
+    AddMeDateKey =
+        Table.AddColumn(
+            AddExposureBasis,
+            "ME_DATE_KEY",
+            each
+                let v = [ME_DATE]
+                in
+                    if v is date then v
+                    else if v is datetime then Date.From(v)
+                    else try Date.From(v) otherwise try Date.FromText(Text.From(v)) otherwise null,
+            type date
+        ),
+
+    AddOwnerKey =
+        Table.AddColumn(
+            AddMeDateKey,
+            "OWNER_KEY",
+            each Text.Upper(Text.Trim(Text.Clean([OWNER_EVENT]))),
+            type text
+        ),
+
+    AddMovementKey =
+        Table.AddColumn(
+            AddOwnerKey,
+            "MOVEMENT_KEY",
+            each Text.Trim(Text.Clean([MOVEMENT_TYPE])),
+            type text
+        ),
+
+    // ============================================================
+    // 4) Primary join on (date, owner, movement)
+    // ============================================================
+    JoinedPrimary =
+        Table.NestedJoin(
+            AddMovementKey,
+            {"ME_DATE_KEY","OWNER_KEY","MOVEMENT_KEY"},
+            ReviewedSummarySlim,
+            {"CURR_EOM_DATE_KEY","OWNER_KEY","MOVEMENT_KEY"},
+            "TopN_Primary",
+            JoinKind.LeftOuter
+        ),
+
+    ExpandedPrimary =
+        Table.ExpandTableColumn(
+            JoinedPrimary,
+            "TopN_Primary",
+            {"TOPN_USED"},
+            {"TOPN_USED_PRIMARY"}
+        ),
+
+    // ============================================================
+    // 5) Fallback join on (owner, movement) using summary's current month
+    //     (This fixes cases where date keys don't line up)
+    // ============================================================
+    JoinedFallback =
+        Table.NestedJoin(
+            ExpandedPrimary,
+            {"OWNER_KEY","MOVEMENT_KEY"},
+            ReviewedSummaryLookup,
+            {"OWNER_KEY","MOVEMENT_KEY"},
+            "TopN_Fallback",
+            JoinKind.LeftOuter
+        ),
+
+    ExpandedFallback =
+        Table.ExpandTableColumn(
+            JoinedFallback,
+            "TopN_Fallback",
+            {"TOPN_USED"},
+            {"TOPN_USED_FALLBACK"}
+        ),
+
+    // ============================================================
+    // 6) Final TOPN_LIMIT selection logic
+    //     Primary match wins, else fallback, else default 30
+    // ============================================================
+    AddTopNLimit =
+        Table.AddColumn(
+            ExpandedFallback,
+            "TOPN_LIMIT",
+            each
+                if [TOPN_USED_PRIMARY] <> null then [TOPN_USED_PRIMARY]
+                else if [TOPN_USED_FALLBACK] <> null then [TOPN_USED_FALLBACK]
+                else 30,
+            Int64.Type
+        ),
+
+    AddTopNSource =
+        Table.AddColumn(
+            AddTopNLimit,
+            "TOPN_SOURCE",
+            each
+                if [TOPN_USED_PRIMARY] <> null then "PRIMARY_JOIN"
+                else if [TOPN_USED_FALLBACK] <> null then "FALLBACK_JOIN"
+                else "DEFAULT_30",
+            type text
+        ),
+
+    // ============================================================
+    // 7) De-dupe per (month, owner, movement, facility)
+    // ============================================================
+    Dedup =
+        Table.Distinct(
+            AddTopNSource,
+            {"ME_DATE_KEY","OWNER_KEY","MOVEMENT_KEY","FACILITY_EVENT"}
+        ),
+
+    // ============================================================
+    // 8) Rank within (month, owner, movement) by exposure
+    // ============================================================
+    SortForRank =
+        Table.Sort(
+            Dedup,
+            {
+                {"ME_DATE_KEY", Order.Ascending},
+                {"OWNER_KEY", Order.Ascending},
+                {"MOVEMENT_KEY", Order.Ascending},
+                {"EXPOSURE_BASIS", Order.Descending}
+            }
+        ),
+
+    Grouped =
+        Table.Group(
+            SortForRank,
+            {"ME_DATE_KEY","OWNER_KEY","MOVEMENT_KEY"},
+            {
+                {"Data", (t) =>
+                    let
+                        t2 = Table.AddIndexColumn(t, "OWNER_RANK", 1, 1, Int64.Type),
+                        t3 = Table.AddColumn(
+                            t2,
+                            "TOPN_OWNER_FLAG",
+                            each if [OWNER_RANK] <= [TOPN_LIMIT] then "Y" else "N",
+                            type text
+                        )
+                    in
+                        t3,
+                 type table}
+            }
+        ),
+
+    Expanded =
+        Table.ExpandTableColumn(
+            Grouped,
+            "Data",
+            {
+                "ME_DATE","BANK_EVENT","FACILITY_EVENT","OWNER_EVENT","MOVEMENT_TYPE",
+                "PREV_SSB_SUM","CURR_SSB_SUM","MOM_DELTA_SUM","REVIEWABLE_FLAG_MAX",
+                "EXPOSURE_BASIS","ME_DATE_KEY","TOPN_USED_PRIMARY","TOPN_USED_FALLBACK",
+                "TOPN_LIMIT","TOPN_SOURCE","OWNER_RANK","TOPN_OWNER_FLAG","OWNER_KEY","MOVEMENT_KEY"
+            },
+            {
+                "ME_DATE","BANK_EVENT","FACILITY_EVENT","OWNER_EVENT","MOVEMENT_TYPE",
+                "PREV_SSB_SUM","CURR_SSB_SUM","MOM_DELTA_SUM","REVIEWABLE_FLAG_MAX",
+                "EXPOSURE_BASIS","ME_DATE_KEY","TOPN_USED_PRIMARY","TOPN_USED_FALLBACK",
+                "TOPN_LIMIT","TOPN_SOURCE","OWNER_RANK","TOPN_OWNER_FLAG","OWNER_KEY","MOVEMENT_KEY"
+            }
+        ),
+
+    // ============================================================
+    // 9) Final shaping
+    // ============================================================
+    Rename =
+        Table.RenameColumns(Expanded, {{"ME_DATE","CURR_EOM_DATE"}}),
+
+    AddAbsDelta =
+        Table.AddColumn(Rename, "BAL_CHANGE_ABS", each Number.Abs([MOM_DELTA_SUM]), type number),
+
+    AddRunTs =
+        Table.AddColumn(AddAbsDelta, "RUN_TIMESTAMP", each DateTime.LocalNow(), type datetime)
+
+in
+    AddRunTs
+
+
+
+
+
+let
+    // ============================================================
+    // 0) Sources
+    // ============================================================
+    Source = pq_Facility_Rollup_All,
 
     ReviewedSummaryRaw = Excel.CurrentWorkbook(){[Name="PBI_Feed_Reviewed_Summary_Current"]}[Content],
 
