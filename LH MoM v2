@@ -16,6 +16,68 @@
 
   mk, LAMBDA(owner, movement, rng,
     LET(
+      r, IFERROR(rng, ""),                 /* convert #CALC/#N/A spills to blank */
+      n, IFERROR(ROWS(r), 0),
+      IF(
+        n=0,
+        blankRow,
+        HSTACK(
+          MAKEARRAY(n,1,LAMBDA(x,y,eom)),
+          MAKEARRAY(n,1,LAMBDA(x,y,owner)),
+          MAKEARRAY(n,1,LAMBDA(x,y,movement)),
+          CHOOSECOLS(r,1),                 /* Facility */
+          CHOOSECOLS(r,7),                 /* Magnitude */
+          SEQUENCE(n)
+        )
+      )
+    )
+  ),
+
+  stacked,
+    VSTACK(
+      mk("Samya","Downgrade IN (ex-Auto)", dSamya),
+      mk("Samya","Exit (ex-Auto)", eSamya),
+      mk("Connor","Downgrade IN (ex-Auto)", dConnor),
+      mk("Connor","Exit (ex-Auto)", eConnor),
+      mk("Daniel","Downgrade IN (ex-Auto)", dDaniel),
+      mk("Daniel","Exit (ex-Auto)", eDaniel),
+      mk("Eleanor","Downgrade IN (ex-Auto)", dEleanor),
+      mk("Eleanor","Exit (ex-Auto)", eEleanor),
+      mk("Casey","Downgrade IN (ex-Auto)", dCasey),
+      mk("Casey","Exit (ex-Auto)", eCasey)
+    ),
+
+  cleaned,
+    IFERROR(
+      FILTER(stacked, INDEX(stacked,,4)<>""),   /* keep only rows with facility */
+      TAKE(stacked,1)
+    ),
+
+  VSTACK(header, cleaned)
+)
+
+
+
+
+
+=LET(
+  eom, Top30_Engine!$B$5,
+  dSamya, Top30_Engine!$AA$14#,
+  eSamya, Top30_Engine!$AA$55#,
+  dConnor, Top30_Engine!$A$14#,
+  eConnor, Top30_Engine!$A$55#,
+  dDaniel, Top30_Engine!$J$14#,
+  eDaniel, Top30_Engine!$R$14#,
+  dEleanor, Top30_Engine!$AQ$14#,
+  eEleanor, Top30_Engine!$AQ$55#,
+  dCasey, Top30_Engine!$AI$14#,
+  eCasey, Top30_Engine!$AI$55#,
+
+  header, HSTACK("CURR_EOM_DATE","OWNER_EVENT","MOVEMENT_TYPE","FACILITY_EVENT","EXPOSURE_BASIS","OWNER_RANK"),
+  blankRow, HSTACK(eom,"","","","",0),
+
+  mk, LAMBDA(owner, movement, rng,
+    LET(
       n, IFERROR(ROWS(rng),0),
       IF(
         n=0,
