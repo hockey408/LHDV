@@ -1,3 +1,21 @@
+Waterfall Bar Color :=
+VAR Step =
+    SELECTEDVALUE ( Waterfall_Axis[Step] )
+RETURN
+SWITCH (
+    TRUE(),
+    Step = "Beginning Balance", "#4A4A4A",   -- neutral gray
+    Step = "Ending Balance",    "#4A4A4A",   -- total bar
+    Step = "Other",             "#9E9E9E",   -- muted gray
+    [Waterfall Amount] > 0,     "#D84315",   -- increase (Downgrade IN) - red/orange
+    [Waterfall Amount] < 0,     "#2E7D32",   -- decrease (Exit) - green
+    "#9E9E9E"
+)
+
+
+
+
+
 Waterfall_Axis =
 DATATABLE (
     "Step", STRING,
