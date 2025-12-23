@@ -1,3 +1,39 @@
+TopMovers_Base =
+SELECTCOLUMNS(
+    PBI_Feed_FacilityBalance_Current,
+    "FACILITY_EVENT", PBI_Feed_FacilityBalance_Current[FACILITY_EVENT],
+    "OWNER_EVENT",    PBI_Feed_FacilityBalance_Current[OWNER_EVENT],
+    "MOM_DELTA",      PBI_Feed_FacilityBalance_Current[MOM_DELTA_SUM],
+    "MAGNITUDE",      ABS(PBI_Feed_FacilityBalance_Current[MOM_DELTA_SUM])
+)
+
+Reviewed Flag :=
+VAR Fac = TopMovers_Base[FACILITY_EVENT]
+RETURN
+IF(
+    CALCULATE(
+        COUNTROWS(PBI_Feed_Facility_Review_Current),
+        PBI_Feed_Facility_Review_Current[FACILITY_EVENT] = Fac
+    ) > 0,
+    "Y",
+    "N"
+)
+
+
+Movement Type :=
+VAR Fac = TopMovers_Base[FACILITY_EVENT]
+VAR mt =
+    CALCULATE(
+        SELECTEDVALUE(PBI_Feed_Facility_Review_Current[MOVEMENT_TYPE]),
+        PBI_Feed_Facility_Review_Current[FACILITY_EVENT] = Fac
+    )
+RETURN
+IF( ISBLANK(mt), "—", mt )
+
+
+
+
+
 KPI - Reviewable Facilities :=
 CALCULATE(
     DISTINCTCOUNT( PBI_Feed_FacilityBalance_Current[FACILITY_EVENT] ),
