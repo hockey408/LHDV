@@ -1,3 +1,31 @@
+Waterfall_Axis =
+DATATABLE (
+    "Step", STRING,
+    {
+        {"Beginning Balance"},
+        {"Downgrade IN"},
+        {"Exit"},
+        {"Other"},
+        {"Ending Balance"}
+    }
+)
+
+
+Waterfall Amount :=
+SWITCH (
+    SELECTEDVALUE ( Waterfall_Axis[Step] ),
+    "Beginning Balance", [Beginning Balance],
+    "Downgrade IN", [Waterfall - Downgrade IN],
+    "Exit", [Waterfall - Exit],
+    "Other", [Waterfall - Other (Net)],
+    "Ending Balance", [Ending Balance]
+)
+
+
+
+
+
+
 KPI - Downgrade IN Total (All) :=
 CALCULATE (
     SUM ( PBI_Feed_Movement_Summary_All_Current[MOM_DELTA_SUM] ),
