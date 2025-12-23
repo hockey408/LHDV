@@ -1,3 +1,14 @@
+Waterfall - Other (Net) :=
+VAR Prev = [Beginning Balance]
+VAR Curr = [Ending Balance]
+VAR Down = [Waterfall - Downgrade IN]
+VAR Exit = [Waterfall - Exit]
+RETURN
+    Curr - Prev - Down - Exit
+
+
+
+
 Waterfall_Axis =
 DATATABLE (
     "Step", STRING,
