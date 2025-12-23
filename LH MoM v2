@@ -1,3 +1,17 @@
+KPI - Reviewable Facilities (Target Movements) :=
+CALCULATE(
+    DISTINCTCOUNT( PBI_Feed_FacilityBalance_Current[FACILITY_EVENT] ),
+    PBI_Feed_FacilityBalance_Current[REVIEWABLE_FLAG_MAX] = 1,
+    PBI_Feed_FacilityBalance_Current[MOVEMENT_TYPE] IN {
+        "Downgrade IN (ex-Auto)",
+        "Exit (ex-Auto)"
+    }
+)
+
+
+
+
+
 KPI - Reviewable Facilities :=
 DISTINCTCOUNT (
     PBI_Feed_Reviewable_Summary_Current[FACILITY_ID]
