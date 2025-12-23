@@ -1,3 +1,52 @@
+KPI - Exit % of Prev :=
+DIVIDE(
+    [KPI - Exit Total (All, Abs)],
+    [KPI - Total Previous Portfolio Balance]
+)
+
+KPI - Review Coverage % :=
+DIVIDE(
+    [KPI - Reviewed Balance (Total)],
+    [KPI - Reviewable Balance (Total)]
+)
+
+
+
+KPI - Reviewable % of Abs Movement :=
+VAR Down = [KPI - Downgrade IN Total (All)]
+VAR Exit = [KPI - Exit Total (All, Abs)]
+VAR TotalAbsMove = ABS(Down) + ABS(Exit)
+RETURN
+DIVIDE(
+    [KPI - Reviewable Balance (Total)],
+    TotalAbsMove
+)
+
+KPI - Chargeoff % of Exit :=
+DIVIDE(
+    [KPI - Chargeoff (MTD)],
+    [KPI - Exit Total (All, Abs)]
+)
+
+KPI - Neg Impact % of Curr :=
+DIVIDE(
+    [KPI - Negative Balance Impact],
+    [KPI - Total Current Portfolio Balance]
+)
+
+
+KPI - Topsided % of Reviewable :=
+DIVIDE(
+    ABS([KPI - Topsided Amount (Net)]),
+    [KPI - Reviewable Balance (Total)]
+)
+
+
+
+
+
+
+
 Reviewed $ (Owner+Movement) :=
 VAR OwnerSel =
     VALUES ( PBI_Feed_Reviewable_Summary_Current[OWNER_EVENT] )
