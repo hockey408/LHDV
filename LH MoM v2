@@ -1,3 +1,44 @@
+Reviewed $ (Owner+Movement) :=
+VAR OwnerSel =
+    VALUES ( PBI_Feed_Reviewable_Summary_Current[OWNER_EVENT] )
+VAR MoveSel =
+    VALUES ( PBI_Feed_Reviewable_Summary_Current[MOVEMENT_TYPE] )
+RETURN
+CALCULATE (
+    SUM ( PBI_Feed_Facility_Review_Current[EXPOSURE_BASIS] ),
+    TREATAS ( OwnerSel, PBI_Feed_Facility_Review_Current[OWNER_EVENT] ),
+    TREATAS ( MoveSel, PBI_Feed_Facility_Review_Current[MOVEMENT_TYPE] )
+)
+
+
+Reviewable $ (Owner+Movement) :=
+SUM ( PBI_Feed_Reviewable_Summary_Current[REVIEWABLE_BALANCE] )
+
+
+Coverage % (Owner+Movement) :=
+DIVIDE ( [Reviewed $ (Owner+Movement)], [Reviewable $ (Owner+Movement)] )
+
+
+Reviewed $ (Owner Total) :=
+VAR OwnerSel =
+    VALUES ( PBI_Feed_Reviewable_Summary_Current[OWNER_EVENT] )
+RETURN
+CALCULATE (
+    SUM ( PBI_Feed_Facility_Review_Current[EXPOSURE_BASIS] ),
+    TREATAS ( OwnerSel, PBI_Feed_Facility_Review_Current[OWNER_EVENT] )
+)
+
+
+Reviewable $ (Owner Total) :=
+CALCULATE (
+    SUM ( PBI_Feed_Reviewable_Summary_Current[REVIEWABLE_BALANCE] ),
+    ALLEXCEPT ( PBI_Feed_Reviewable_Summary_Current, PBI_Feed_Reviewable_Summary_Current[OWNER_EVENT] )
+)
+
+
+
+
+
 Reviewable $ (By Owner) :=
 VAR OwnerSelected =
     VALUES ( Dim_Owner[OWNER_EVENT] )
