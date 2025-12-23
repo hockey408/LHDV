@@ -1,3 +1,39 @@
+KPI - Downgrade IN Total (All) :=
+CALCULATE (
+    SUM ( PBI_Feed_Movement_Summary_All_Current[MOM_DELTA_SUM] ),
+    FILTER (
+        ALL ( PBI_Feed_Movement_Summary_All_Current ),
+        CONTAINSSTRING ( LOWER ( PBI_Feed_Movement_Summary_All_Current[MOVEMENT_TYPE] ), "downgrade" )
+            && CONTAINSSTRING ( LOWER ( PBI_Feed_Movement_Summary_All_Current[MOVEMENT_TYPE] ), "in" )
+    )
+)
+
+
+KPI - Exit Total (All, Abs) :=
+ABS (
+    CALCULATE (
+        SUM ( PBI_Feed_Movement_Summary_All_Current[MOM_DELTA_SUM] ),
+        FILTER (
+            ALL ( PBI_Feed_Movement_Summary_All_Current ),
+            CONTAINSSTRING ( LOWER ( PBI_Feed_Movement_Summary_All_Current[MOVEMENT_TYPE] ), "exit" )
+        )
+    )
+)
+
+KPI - Downgrade IN Total (All) :=
+CALCULATE (
+    SUM ( PBI_Feed_Movement_Summary_All_Current[MOM_DELTA_SUM] ),
+    PBI_Feed_Movement_Summary_All_Current[MOVEMENT_TYPE] IN {
+        "Downgrade IN (ex-Auto)",
+        "Autochange Downgrade IN"
+    }
+)
+
+
+
+
+
+
 let
     Source = pq_Facility_Rollup_All,
 
