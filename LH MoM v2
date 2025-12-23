@@ -1,3 +1,47 @@
+  CASE
+    WHEN a.Curr_CSS='INFL10' THEN 'Daniel'
+    WHEN a.Curr_PROD5='Business RE Term Loans'
+         AND a.Curr_Bank_Code='L-CIT'
+         AND COALESCE(a.Curr_CIS_SSB,0) > 500000 THEN 'Samya'
+    WHEN a.Curr_PROD5 IN ('Business Non-RE Term Loans','Business Commitment Draw')
+         AND a.Curr_Bank_Code='L-CIT'
+         AND COALESCE(a.Curr_CIS_SSB,0) > 250000 THEN 'Casey'
+    WHEN a.Curr_PROD5='Business RE Term Loans'
+         AND a.Curr_Bank_Code='L-CIT'
+         AND COALESCE(a.Curr_CIS_SSB,0) <= 500000 THEN 'Not Covered; Under $500k; Samya'
+    WHEN a.Curr_PROD5 IN ('Business Non-RE Term Loans','Business Commitment Draw')
+         AND a.Curr_Bank_Code='L-CIT'
+         AND COALESCE(a.Curr_CIS_SSB,0) <= 250000 THEN 'Not Covered; Under $250k; Casey'
+    WHEN a.Curr_Bank_Code='L-SVB' THEN 'Eleanor'
+    WHEN a.Curr_RBC='R' THEN 'Autochange'
+    WHEN a.Curr_Bank_Code='L-FCB' THEN 'Connor'
+    ELSE 'NOT COVERED'
+  END AS Owner_Curr,
+
+  CASE
+    WHEN a.Prev_CSS='INFL10' THEN 'Daniel'
+    WHEN a.Prev_PROD5='Business RE Term Loans'
+         AND a.Prev_Bank_Code='L-CIT'
+         AND COALESCE(a.Prev_CIS_SSB,0) > 500000 THEN 'Samya'
+    WHEN a.Prev_PROD5 IN ('Business Non-RE Term Loans','Business Commitment Draw')
+         AND a.Prev_Bank_Code='L-CIT'
+         AND COALESCE(a.Prev_CIS_SSB,0) > 250000 THEN 'Casey'
+    WHEN a.Prev_PROD5='Business RE Term Loans'
+         AND a.Prev_Bank_Code='L-CIT'
+         AND COALESCE(a.Prev_CIS_SSB,0) <= 500000 THEN 'Not Covered; Under $500k; Samya'
+    WHEN a.Prev_PROD5 IN ('Business Non-RE Term Loans','Business Commitment Draw')
+         AND a.Prev_Bank_Code='L-CIT'
+         AND COALESCE(a.Prev_CIS_SSB,0) <= 250000 THEN 'Not Covered; Under $250k; Casey'
+    WHEN a.Prev_Bank_Code='L-SVB' THEN 'Eleanor'
+    WHEN a.Prev_RBC='R' THEN 'Autochange'
+    WHEN a.Prev_Bank_Code='L-FCB' THEN 'Connor'
+    ELSE 'NOT COVERED'
+  END AS Owner_Prev,
+
+
+
+
+
 TopMovers_Base =
 SELECTCOLUMNS(
     PBI_Feed_Facility_Rollup_All_Current,   -- use your actual table name in PBI
