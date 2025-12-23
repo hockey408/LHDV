@@ -1,6 +1,71 @@
 let
     Source = Excel.CurrentWorkbook(){[Name="rng_PBI_Feed_Facility_Review_Current"]}[Content],
     PromoteHeaders = Table.PromoteHeaders(Source, [PromoteAllScalars=true]),
+
+    // Keep as text first to avoid conversion errors from blanks/placeholder rows
+    AsText = Table.TransformColumnTypes(
+        PromoteHeaders,
+        {
+            {"CURR_EOM_DATE", type text},
+            {"OWNER_EVENT", type text},
+            {"MOVEMENT_TYPE", type text},
+            {"FACILITY_EVENT", type text},
+            {"EXPOSURE_BASIS", type text},
+            {"OWNER_RANK", type text}
+        }
+    ),
+
+    // Parse date safely
+    ParseDate = Table.TransformColumns(
+        AsText,
+        {{"CURR_EOM_DATE", each try Date.From(_) otherwise try Date.FromText(_) otherwise null, type date}}
+    ),
+
+    // Parse exposure safely (handles blanks, commas, etc.)
+    AddExposureNum = Table.AddColumn(
+        ParseDate,
+        "EXPOSURE_BASIS_NUM",
+        each
+            let t = Text.Trim([EXPOSURE_BASIS])
+            in if t = "" then null else try Number.FromText(Text.Replace(t, ",", "")) otherwise null,
+        type number
+    ),
+
+    // Parse rank safely
+    AddRankNum = Table.AddColumn(
+        AddExposureNum,
+        "OWNER_RANK_NUM",
+        each
+            let t = Text.Trim([OWNER_RANK])
+            in if t = "" then null else try Number.FromText(t) otherwise null,
+        Int64.Type
+    ),
+
+    // Remove original text cols and rename numeric versions
+    DropOld = Table.RemoveColumns(AddRankNum, {"EXPOSURE_BASIS", "OWNER_RANK"}),
+
+    RenameCols = Table.RenameColumns(
+        DropOld,
+        {{"EXPOSURE_BASIS_NUM", "EXPOSURE_BASIS"}, {"OWNER_RANK_NUM", "OWNER_RANK"}}
+    ),
+
+    // Optional: remove placeholder/blank rows (no facility)
+    FilterRealRows = Table.SelectRows(RenameCols, each [FACILITY_EVENT] <> null and Text.Trim([FACILITY_EVENT]) <> ""),
+
+    AddTopNFlag = Table.AddColumn(FilterRealRows, "TOPN_OWNER_FLAG", each "Y", type text),
+    AddRunTs = Table.AddColumn(AddTopNFlag, "RUN_TIMESTAMP", each DateTime.LocalNow(), type datetime)
+
+in
+    AddRunTs
+
+
+
+
+
+
+let
+    Source = Excel.CurrentWorkbook(){[Name="rng_PBI_Feed_Facility_Review_Current"]}[Content],
+    PromoteHeaders = Table.PromoteHeaders(Source, [PromoteAllScalars=true]),
     Types = Table.TransformColumnTypes(
         PromoteHeaders,
         {
