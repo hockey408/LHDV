@@ -1,3 +1,9 @@
+= Table.SelectRows(#"Previous Step", each [FACILITY_EVENT] <> null and Text.Trim(Text.From([FACILITY_EVENT])) <> "")
+
+
+
+
+
 =LET(
   eom, Top30_Engine!$B$5,
   dSamya, Top30_Engine!$AA$14#,
