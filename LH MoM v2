@@ -1,6 +1,36 @@
 let
     Source = MoM_Account_Detail,
 
+    KeepCols =
+        Table.SelectColumns(
+            Source,
+            {"FACILITY_FOR_EVENT", "ACCOUNT_NAME_FOR_EVENT"}
+        ),
+
+    FilterBlanks =
+        Table.SelectRows(
+            KeepCols,
+            each [FACILITY_FOR_EVENT] <> null
+              and [ACCOUNT_NAME_FOR_EVENT] <> null
+              and Text.Trim([ACCOUNT_NAME_FOR_EVENT]) <> ""
+        ),
+
+    Grouped =
+        Table.Group(
+            FilterBlanks,
+            {"FACILITY_FOR_EVENT"},
+            {{"ACCOUNT_NAME_FOR_EVENT", each List.Max([ACCOUNT_NAME_FOR_EVENT]), type text}}
+        )
+in
+    Grouped
+
+
+
+
+
+let
+    Source = MoM_Account_Detail,
+
     // Keep only what we need
     KeepCols =
         Table.SelectColumns(
