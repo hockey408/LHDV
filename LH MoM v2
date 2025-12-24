@@ -1,4 +1,9 @@
-    // Exclude NOT COVERED owner bucket
+https://www.instagram.com/icestat_analytics?igsh=MW4xdTc3dWlsazBzag%3D%3D&utm_source=qr
+
+
+
+
+// Exclude NOT COVERED owner bucket
     FilterOwner =
         Table.SelectRows(
             FilterReviewable,
