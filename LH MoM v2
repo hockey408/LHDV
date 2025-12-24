@@ -1,3 +1,35 @@
+let
+    Source = MoM_Account_Detail,
+
+    // Keep only what we need
+    KeepCols =
+        Table.SelectColumns(
+            Source,
+            {"FACILITY_EVENT", "ACCOUNT_NAME"}
+        ),
+
+    // Remove blanks just in case
+    FilterBlanks =
+        Table.SelectRows(
+            KeepCols,
+            each [FACILITY_EVENT] <> null and [ACCOUNT_NAME] <> null
+        ),
+
+    // One name per facility
+    Grouped =
+        Table.Group(
+            FilterBlanks,
+            {"FACILITY_EVENT"},
+            {
+                {"ACCOUNT_NAME", each List.Max([ACCOUNT_NAME]), type text}
+            }
+        )
+in
+    Grouped
+
+
+
+
 https://www.instagram.com/icestat_analytics?igsh=MW4xdTc3dWlsazBzag%3D%3D&utm_source=qr
 
 
