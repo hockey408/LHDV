@@ -1,3 +1,51 @@
+let
+    Source = tbl_Facility_Rollup_All,
+
+    // Keep only reviewable facilities
+    FilterReviewable =
+        Table.SelectRows(
+            Source,
+            each [REVIEWABLE_FLAG_MAX] = 1
+        ),
+
+    // Keep only target movement types
+    FilterMovement =
+        Table.SelectRows(
+            FilterReviewable,
+            each [MOVEMENT_TYPE] = "Downgrade IN (ex-Auto)"
+              or [MOVEMENT_TYPE] = "Exit (ex-Auto)"
+        ),
+
+    // Create reviewable balance per definition
+    AddReviewableBalance =
+        Table.AddColumn(
+            FilterMovement,
+            "REVIEWABLE_BALANCE",
+            each
+                if [MOVEMENT_TYPE] = "Downgrade IN (ex-Auto)"
+                then [CURR_SSB_SUM]
+                else if [MOVEMENT_TYPE] = "Exit (ex-Auto)"
+                then Number.Abs([PREV_SSB_SUM])
+                else null,
+            type number
+        ),
+
+    // Group to Owner + Movement Type
+    Grouped =
+        Table.Group(
+            AddReviewableBalance,
+            {"OWNER_EVENT", "MOVEMENT_TYPE"},
+            {
+                {"REVIEWABLE_BALANCE", each List.Sum([REVIEWABLE_BALANCE]), type number}
+            }
+        )
+in
+    Grouped
+
+
+
+
+
 /* ================================== Query 1: MoM_Account_Detail (UPDATED CIS EXPOSURE BASIS) ======================================= */
 
 WITH latest_curr AS (
