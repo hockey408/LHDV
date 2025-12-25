@@ -1,3 +1,46 @@
+Narrative - MoM Delta $ :=
+FORMAT ( [KPI - MoM Delta $], "$#,##0,,.0M" )
+
+Narrative - MoM % :=
+FORMAT ( [KPI - Portfolio MoM %], "0.0%" )
+
+Narrative - Downgrade IN $ :=
+FORMAT ( [KPI - Downgrade IN Total (All)], "$#,##0,,.0M" )
+
+Narrative - Exit $ :=
+FORMAT ( [KPI - Exit Total (All, Abs)], "$#,##0,,.0M" )
+
+Narrative - Reviewed $ :=
+FORMAT ( [KPI - Reviewed Balance (Total)], "$#,##0,,.0M" )
+
+Narrative - Reviewable $ :=
+FORMAT ( [KPI - Reviewable Balance (Total)], "$#,##0,,.0M" )
+
+Narrative - Reviewable $ :=
+FORMAT ( [KPI - Reviewable Balance (Total)], "$#,##0,,.0M" )
+
+Narrative - Chargeoff $ :=
+FORMAT ( [KPI - Chargeoff (MTD)], "$#,##0,,.0M" )
+
+Narrative - Chargeoff % of Exit :=
+FORMAT ( [KPI - Chargeoff % of Exit], "0.0%" )
+
+Narrative - Topsided $ :=
+FORMAT ( [KPI - Topsided Amount (Net)], "$#,##0,,.0M" )
+
+Narrative - Topsided Facilities :=
+FORMAT ( [KPI - Topsided Facilities], "0" )
+
+Narrative - Negative Impact $ :=
+FORMAT ( [KPI - Negative Balance Impact], "$#,##0,,.0M" )
+
+
+
+
+
+
+
+
 let
     Source = MoM_Account_Detail,
 
