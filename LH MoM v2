@@ -1,3 +1,146 @@
+Process & Methodology Overview
+
+Purpose Statement (example):
+
+This framework is designed to provide a consistent, explainable, and reviewable view of Month-over-Month Non-Accrual movement at the facility level, while preserving account-level transparency for review and validation.
+
+Design Principles (bullet form):
+
+Facility-level classification drives prioritization and ranking
+
+Account-level detail supports review and investigation
+
+Rule-based logic is applied upstream (SQL) wherever possible
+
+Manual judgment is isolated, visible, and controlled
+
+Outputs are traceable back to source systems
+
+This immediately tells your boss: this was intentionally designed, not hacked together.
+
+2️⃣ End-to-End Data Flow (Visual + Text)
+
+You should include one simple flow diagram (even boxes + arrows):
+
+Source Systems
+   ↓
+Netezza SQL (Facility Classification)
+   ↓
+Excel / Power Query (Validation & Enrichment)
+   ↓
+Excel Logic (Ranking & Review Flags)
+   ↓
+Power BI Executive Summary
+
+
+Short explanation under it:
+
+Core classification logic (Movement Type, Owner, Facility Rollups) is applied upstream in SQL to ensure consistency. Excel is used for review orchestration and ranking logic, while Power BI is used strictly for presentation and aggregation.
+
+This line alone reduces 90% of “where is the logic?” questions.
+
+3️⃣ Facility-Level Classification Logic (Key Section)
+
+This is where your boss will linger.
+
+Section Header:
+
+Facility-Level Classification Framework
+
+Key concepts to explain clearly:
+
+Movement_Type
+
+Assigned once per facility per month
+
+Based on net change drivers across all associated accounts
+
+Categories include:
+
+Exit (ex-Auto)
+
+Downgrade IN (ex-Auto)
+
+Chargeoff
+
+Negative Non-Accrual Movement
+
+Auto-generated movements are explicitly excluded where noted
+
+Owner
+
+Determined at the facility level to ensure:
+
+Single accountable review owner
+
+Consistent Top 30 ranking
+
+Stamped down to account records for drill-through visibility
+
+Important sentence to include:
+
+While individual accounts within a facility may exhibit differing behaviors, prioritization and ownership are determined at the facility level to avoid fragmented review and duplicated effort.
+
+This pre-emptively answers the “what if accounts differ?” question.
+
+4️⃣ Review & Prioritization Logic
+
+Section Header:
+
+Review Prioritization & Top Movers
+
+Explain in plain English:
+
+Facilities are ranked based on absolute MoM non-accrual movement
+
+Rankings are segmented by:
+
+Movement_Type
+
+Assigned Owner
+
+The Top 30 framework is designed to:
+
+Surface material drivers
+
+Focus review capacity where it matters
+
+Avoid noise from immaterial changes
+
+Optional but powerful line:
+
+The objective is not to review everything, but to review the right things consistently.
+
+Executives love that framing.
+
+5️⃣ Controls, Validation, and Judgment
+
+This is where you earn trust.
+
+Section Header:
+
+Controls, Validation & Governance
+
+Include bullets like:
+
+Reconciliation checks between source totals and rollups
+
+Consistency checks between facility and account classifications
+
+Explicit exclusion rules (e.g., Auto movements, NOT COVERED owners)
+
+Standardized logic across months to prevent drift
+
+Then clearly state:
+
+Judgment is applied only in clearly identified areas and does not override core classification logic.
+
+That sentence matters more than it seems.
+
+
+
+
+
 Narrative - Executive Bullets :=
 VAR b1 =
     "• Total portfolio balance changed by " & [Narrative - MoM Delta $] &
