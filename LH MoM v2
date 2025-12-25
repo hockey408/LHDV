@@ -1,3 +1,29 @@
+Narrative - Executive Bullets :=
+VAR b1 =
+    "• Total portfolio balance changed by " & [Narrative - MoM Delta $] &
+    " MoM (" & [Narrative - MoM %] & "), driven primarily by " &
+    [Narrative - Downgrade IN $] & " of Downgrade IN activity and " &
+    [Narrative - Exit $] & " of Exits."
+
+VAR b2 =
+    "• " & [Narrative - Reviewed $] & " of " & [Narrative - Reviewable $] &
+    " reviewable exposure was reviewed this month (" & [Narrative - Coverage %] &
+    " coverage), representing the Top 30 / Top N facilities by exposure."
+
+VAR b3 =
+    "• Chargeoffs totaled " & [Narrative - Chargeoff $] & " (" &
+    [Narrative - Chargeoff % of Exit] &
+    " of Exit activity), and " & [Narrative - Topsided $] &
+    " of post-review topsides were applied across " &
+    [Narrative - Topsided Facilities] & " facilities."
+
+RETURN
+b1 & UNICHAR(10) & b2 & UNICHAR(10) & b3
+
+
+
+
+
 Narrative - MoM Delta $ :=
 FORMAT ( [KPI - MoM Delta $], "$#,##0,,.0M" )
 
