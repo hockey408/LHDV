@@ -1,3 +1,39 @@
+let
+    // Account-level table
+    Acct = Excel.CurrentWorkbook(){[Name="MoM_Account_Detail"]}[Content],
+    AcctGrouped =
+        Table.Group(
+            Acct,
+            {"FACILITY_FOR_EVENT"},
+            {
+                {"Acct_Prev", each List.Sum([SSB_PREV]), type number},
+                {"Acct_Curr", each List.Sum([SSB_CURR]), type number}
+            }
+        ),
+
+    // Facility-level rollup table
+    Fac = Excel.CurrentWorkbook(){[Name="tbl_Facility_Rollup_All"]}[Content],
+    FacKeep = Table.SelectColumns(Fac, {"FACILITY_EVENT","PREV_SSB_SUM","CURR_SSB_SUM"}),
+
+    // Join: acct facility -> facility rollup facility
+    Joined = Table.NestedJoin(
+        AcctGrouped, {"FACILITY_FOR_EVENT"},
+        FacKeep,     {"FACILITY_EVENT"},
+        "Fac", JoinKind.LeftOuter
+    ),
+    Expanded = Table.ExpandTableColumn(Joined, "Fac", {"PREV_SSB_SUM","CURR_SSB_SUM"}, {"Fac_Prev","Fac_Curr"}),
+
+    AddDiffPrev = Table.AddColumn(Expanded, "Diff_Prev", each [Acct_Prev] - [Fac_Prev], type number),
+    AddDiffCurr = Table.AddColumn(AddDiffPrev, "Diff_Curr", each [Acct_Curr] - [Fac_Curr], type number),
+
+    Exceptions = Table.SelectRows(AddDiffCurr, each Number.Abs([Diff_Prev]) > 0.01 or Number.Abs([Diff_Curr]) > 0.01)
+in
+    Exceptions
+
+
+
+
+
 ME_DATE
 BANK_EVENT
 FACILITY_EVENT
