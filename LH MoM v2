@@ -1,3 +1,26 @@
+ME_DATE
+BANK_EVENT
+FACILITY_EVENT
+OWNER_EVENT
+MOVEMENT_TYPE
+PREV_SSB_SUM
+CURR_SSB_SUM
+MOM_DELTA_SUM
+REVIEWABLE_FLAG_MAX
+ACCOUNT_NAME
+Owner_Consistency_Flag
+Movement_Consistency_Flag
+Owner_Distinct_Count
+Movement_Distinct_Count
+Owner_Values
+Movement_Values
+Exception_Flag
+
+
+
+
+
+
 let
     Source = Excel.CurrentWorkbook(){[Name="MoM_Account_Detail"]}[Content],
     Exceptions = Table.SelectRows(Source, each [OWNER_FOR_EVENT] = "NOT COVERED")
