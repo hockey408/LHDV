@@ -1,5 +1,35 @@
 let
     Source = Excel.CurrentWorkbook(){[Name="MoM_Account_Detail"]}[Content],
+    Exceptions = Table.SelectRows(Source, each [OWNER_FOR_EVENT] = "NOT COVERED")
+in
+    Exceptions
+
+let
+    Acct = Excel.CurrentWorkbook(){[Name="MoM_Account_Detail"]}[Content],
+    AcctGrouped = Table.Group(Acct, {"FACILITY_FOR_EVENT"},
+        {
+            {"Acct_Prev", each List.Sum([SSB_PREV]), type number},
+            {"Acct_Curr", each List.Sum([SSB_CURR]), type number}
+        }
+    ),
+    Fac = Excel.CurrentWorkbook(){[Name="Facility_Rollup_All"]}[Content],
+    FacKeep = Table.SelectColumns(Fac, {"FACILITY_FOR_EVENT","SSB_PREV","SSB_CURR"}),
+    Joined = Table.NestedJoin(AcctGrouped, {"FACILITY_FOR_EVENT"}, FacKeep, {"FACILITY_FOR_EVENT"}, "Fac", JoinKind.LeftOuter),
+    Expanded = Table.ExpandTableColumn(Joined, "Fac", {"SSB_PREV","SSB_CURR"}, {"Fac_Prev","Fac_Curr"}),
+    AddDiffPrev = Table.AddColumn(Expanded, "Diff_Prev", each [Acct_Prev] - [Fac_Prev], type number),
+    AddDiffCurr = Table.AddColumn(AddDiffPrev, "Diff_Curr", each [Acct_Curr] - [Fac_Curr], type number),
+    Exceptions = Table.SelectRows(AddDiffCurr, each Number.Abs([Diff_Prev]) > 0.01 or Number.Abs([Diff_Curr]) > 0.01)
+in
+    Exceptions
+
+
+
+
+
+
+
+let
+    Source = Excel.CurrentWorkbook(){[Name="MoM_Account_Detail"]}[Content],
     AddFail = Table.AddColumn(Source, "QA_Fail_NullKey", each
         ([FACILITY_FOR_EVENT]=null or Text.Trim(Text.From([FACILITY_FOR_EVENT]))="") or
         ([CIS_FOR_EVENT]=null      or Text.Trim(Text.From([CIS_FOR_EVENT]))="") or
