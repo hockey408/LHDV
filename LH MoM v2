@@ -1,3 +1,43 @@
+let
+    Source = Excel.CurrentWorkbook(){[Name="MoM_Account_Detail"]}[Content],
+    AddFail = Table.AddColumn(Source, "QA_Fail_NullKey", each
+        ([FACILITY_FOR_EVENT]=null or Text.Trim(Text.From([FACILITY_FOR_EVENT]))="") or
+        ([CIS_FOR_EVENT]=null      or Text.Trim(Text.From([CIS_FOR_EVENT]))="") or
+        ([BANK_FOR_EVENT]=null     or Text.Trim(Text.From([BANK_FOR_EVENT]))="") or
+        ([ACCOUNT_KEY]=null        or Text.Trim(Text.From([ACCOUNT_KEY]))="")
+    , type logical),
+    Exceptions = Table.SelectRows(AddFail, each [QA_Fail_NullKey]=true),
+    Keep = Table.SelectColumns(Exceptions, {"ACCOUNT_KEY","FACILITY_FOR_EVENT","CIS_FOR_EVENT","BANK_FOR_EVENT"})
+in
+    Keep
+
+
+let
+    Source = Excel.CurrentWorkbook(){[Name="MoM_Account_Detail"]}[Content],
+    Grouped = Table.Group(Source, {"FACILITY_FOR_EVENT"},
+        {{"MovementTypes", each List.Distinct(List.RemoveNulls([MOVEMENT_TYPE])), type list}}
+    ),
+    AddCount = Table.AddColumn(Grouped, "MovementType_Count", each List.Count([MovementTypes]), Int64.Type),
+    Exceptions = Table.SelectRows(AddCount, each [MovementType_Count] > 1)
+in
+    Exceptions
+
+
+let
+    Source = Excel.CurrentWorkbook(){[Name="MoM_Account_Detail"]}[Content],
+    Grouped = Table.Group(Source, {"FACILITY_FOR_EVENT"},
+        {{"Owners", each List.Distinct(List.RemoveNulls([OWNER_FOR_EVENT])), type list}}
+    ),
+    AddCount = Table.AddColumn(Grouped, "Owner_Count", each List.Count([Owners]), Int64.Type),
+    Exceptions = Table.SelectRows(AddCount, each [Owner_Count] > 1)
+in
+    Exceptions
+
+
+
+
+
+
 /* ================================== Query 1: MoM_Account_Detail (UPDATED CIS EXPOSURE BASIS) ======================================= */
 
 WITH latest_curr AS (
