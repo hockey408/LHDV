@@ -1,3 +1,294 @@
+1) Movement_Type (Facility-level classification)
+What it is
+
+A single classification per Facility per month that explains why the facility’s non-accrual balance changed MoM (e.g., Exit, Downgrade IN, Chargeoff, Neg_NA). This prevents “account-level fragmentation” and ensures Top30 review is consistent and not double-counted.
+
+Where it’s applied
+
+Primary: SQL (recommended / your latest design)
+Propagated to account rows: SQL stamping to MoM_Account_Detail
+Consumed by: Excel tables + PBI
+
+Conceptual logic (plain English)
+
+Start with facility-month rollup of non-accrual balance (curr, prior, delta).
+
+Identify movement driver flags (exit, downgrade-in, chargeoff, negative movement, etc.)
+
+Apply precedence rules so only one Movement_Type is chosen:
+
+Chargeoff usually outranks other types
+
+Exit outranks downgrade-in (or vice versa depending on your rules)
+
+Exclude “Auto” movements from the “ex-Auto” buckets
+
+Assign Movement_Type based on the first matched condition in precedence order.
+
+Representative SQL pattern (facility rollup + precedence)
+/* Facility rollup (MoM) */
+WITH fac AS (
+  SELECT
+    facility_id,
+    SUM(prior_na_balance) AS prior_na,
+    SUM(curr_na_balance)  AS curr_na,
+    SUM(curr_na_balance) - SUM(prior_na_balance) AS delta_na,
+
+    /* Example driver flags - your actual fields may differ */
+    MAX(CASE WHEN exit_flag = 1 THEN 1 ELSE 0 END) AS has_exit,
+    MAX(CASE WHEN downgrade_in_flag = 1 THEN 1 ELSE 0 END) AS has_downgrade_in,
+    MAX(CASE WHEN chargeoff_flag = 1 THEN 1 ELSE 0 END) AS has_chargeoff,
+    MAX(CASE WHEN auto_flag = 1 THEN 1 ELSE 0 END) AS has_auto
+  FROM src_mom_account_detail
+  GROUP BY facility_id
+),
+
+/* Movement type precedence */
+classified AS (
+  SELECT
+    facility_id,
+    prior_na,
+    curr_na,
+    delta_na,
+    CASE
+      WHEN has_chargeoff = 1 THEN 'Chargeoff'
+      WHEN has_exit = 1 AND has_auto = 0 THEN 'Exit (ex-Auto)'
+      WHEN has_downgrade_in = 1 AND has_auto = 0 THEN 'Downgrade IN (ex-Auto)'
+      WHEN delta_na < 0 THEN 'Neg_NA'
+      ELSE 'Other / No Material Change'
+    END AS movement_type
+  FROM fac
+)
+
+SELECT * FROM classified;
+
+Notes your boss will care about
+
+“ex-Auto” is achieved by explicitly requiring has_auto = 0 (or equivalent “not auto-driven” conditions).
+
+Movement_Type is facility-level; any account-level exceptions are visible in the account detail but don’t drive ranking.
+
+2) Owner (Facility-level accountability assignment)
+What it is
+
+A single accountable Owner per Facility per month, used for:
+
+routing review work,
+
+segmenting Top30 tabs by Owner,
+
+preventing “shared ownership ambiguity.”
+
+Where it’s applied
+
+Primary: SQL, stamped into both Facility_Rollup and MoM_Account_Detail
+Cleanup/exclusions: sometimes PQ (e.g., exclude “NOT COVERED” tags)
+
+Conceptual logic (plain English)
+
+Owner is derived by looking at the facility’s “most relevant” ownership signals and applying precedence rules such as:
+
+explicit owner_event tags > fallback owner mapping > default buckets
+
+exclude invalid tags (e.g., NOT COVERED)
+
+ensure one owner per facility (tie-break rules if multiple)
+
+Representative SQL pattern (owner precedence + exclusions)
+WITH owner_base AS (
+  SELECT
+    facility_id,
+    /* Example: from event tagging table */
+    MAX(CASE WHEN owner_event IS NOT NULL THEN owner_event END) AS owner_event_tag,
+
+    /* Example: fallback mapping */
+    MAX(owner_mapped) AS owner_mapped
+  FROM src_facility_ownership
+  GROUP BY facility_id
+),
+
+owner_final AS (
+  SELECT
+    facility_id,
+    CASE
+      WHEN owner_event_tag IS NOT NULL
+           AND owner_event_tag <> 'NOT COVERED'
+        THEN owner_event_tag
+
+      WHEN owner_mapped IS NOT NULL
+        THEN owner_mapped
+
+      ELSE 'UNASSIGNED'
+    END AS owner
+  FROM owner_base
+)
+
+SELECT * FROM owner_final;
+
+Representative PQ cleanup (exclude NOT COVERED)
+
+If “NOT COVERED” is getting through in Power Query, a standard filter step:
+
+= Table.SelectRows(PreviousStep, each [OWNER_EVENT] <> "NOT COVERED")
+
+
+Or if blanks/nulls too:
+
+= Table.SelectRows(PreviousStep, each [OWNER_EVENT] <> "NOT COVERED" and [OWNER_EVENT] <> null)
+
+3) Reviewable_Flag (Is this in scope for review?)
+What it is
+
+A flag that says: should this facility be considered for review this month, based on scope rules.
+
+This is your “noise filter” that prevents execs from seeing junk in Top30.
+
+Where it’s applied
+
+Often SQL (best) or Excel (acceptable if it depends on workflow constraints).
+In your setup, it’s typically easiest to compute in SQL on the facility rollup and pass downstream.
+
+Common drivers (plain English)
+
+A facility is Reviewable if:
+
+It has a non-trivial MoM change (materiality threshold)
+
+It falls into targeted Movement_Type buckets (e.g., Exit ex-Auto, Downgrade IN ex-Auto)
+
+It is not excluded by known exclusions (Auto, covered exceptions, special portfolios)
+
+It is in scope for the current process month
+
+Representative SQL pattern (materiality + type + exclusions)
+SELECT
+  facility_id,
+  movement_type,
+  owner,
+  delta_na,
+  CASE
+    WHEN ABS(delta_na) >= 500000   -- example threshold
+      AND movement_type IN ('Exit (ex-Auto)', 'Downgrade IN (ex-Auto)')
+      AND owner <> 'UNASSIGNED'
+    THEN 1 ELSE 0
+  END AS reviewable_flag
+FROM facility_rollup;
+
+Representative Excel pattern (if computed in Excel)
+
+If you’re computing from columns in a table (structured references):
+
+=LET(
+  d, [@DELTA_NA],
+  mt, [@MOVEMENT_TYPE],
+  ow, [@OWNER],
+  IF(AND(ABS(d)>=500000, OR(mt="Exit (ex-Auto)", mt="Downgrade IN (ex-Auto)"), ow<>"UNASSIGNED"), "Y", "N")
+)
+
+4) Top30 (Ranking logic by Owner + Movement_Type)
+What it is
+
+A ranked list that answers: “What are the biggest review priorities?”
+Typically ranked by absolute MoM change (magnitude), optionally filtered to Reviewable only.
+
+Where it’s applied
+
+Usually Excel (because you want the Top30 tabs to spill dynamically and drive per-owner views), but it can also be done in SQL and consumed directly.
+
+Conceptual logic (plain English)
+
+Filter to Reviewable_Flag = Y (or 1)
+
+Filter to the current Owner and Movement_Type bucket (e.g., Exit ex-Auto)
+
+Sort by magnitude (usually ABS(DELTA_NA) descending)
+
+Take top 30 facilities
+
+Feed into the Top30 detail tabs (spill list → detail formulas)
+
+Representative Excel ranking pattern (dynamic array)
+
+Assume you have a facility rollup table tbl_Facility_Rollup_All with columns:
+
+FACILITY_ID
+
+OWNER
+
+MOVEMENT_TYPE
+
+DELTA_NA
+
+REVIEWABLE_FLAG
+
+Top30 list (Facility IDs)
+
+=LET(
+  t, tbl_Facility_Rollup_All,
+  owner, $B$2,
+  mt, $B$3,
+  f, FILTER(t, (t[OWNER]=owner)*(t[MOVEMENT_TYPE]=mt)*(t[REVIEWABLE_FLAG]="Y")),
+  s, SORTBY(f, ABS(f[DELTA_NA]), -1),
+  TAKE(CHOOSECOLS(s, XMATCH("FACILITY_ID", t[#Headers])), 30)
+)
+
+
+Top30 with columns (Facility, Movement, Magnitude, Owner)
+
+=LET(
+  t, tbl_Facility_Rollup_All,
+  owner, $B$2,
+  mt, $B$3,
+  f, FILTER(t, (t[OWNER]=owner)*(t[MOVEMENT_TYPE]=mt)*(t[REVIEWABLE_FLAG]="Y")),
+  s, SORTBY(f, ABS(f[DELTA_NA]), -1),
+  TAKE(s, 30)
+)
+
+If your “Top10 Movers” in PBI needs Movement_Type + Owner
+
+This logic should point to the same ranked list concept:
+
+either pre-ranked in SQL (window function)
+
+or ranked in PBI DAX using RANKX over the filtered set
+But the important point for your boss is: the ranking is deterministic and aligned to the facility rollup.
+
+Representative SQL Top30 (if you want it upstream)
+SELECT *
+FROM (
+  SELECT
+    facility_id,
+    owner,
+    movement_type,
+    delta_na,
+    ROW_NUMBER() OVER (
+      PARTITION BY owner, movement_type
+      ORDER BY ABS(delta_na) DESC
+    ) AS rn
+  FROM facility_rollup
+  WHERE reviewable_flag = 1
+) x
+WHERE rn <= 30;
+
+How to present this in your file (so it reads cleanly)
+
+For each of the four topics, use the same mini-template:
+
+(1) Definition (what it is)
+(2) Where computed (SQL / PQ / Excel)
+(3) Inputs (fields used)
+(4) Logic (plain English)
+(5) Snippet (SQL/PQ/Excel)
+(6) Edge cases + controls
+
+That format makes your boss feel like this is engineered, not improvised.
+
+
+
+
+
+
+
 Process & Methodology Overview
 
 Purpose Statement (example):
