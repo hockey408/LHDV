@@ -1,3 +1,71 @@
+/* === QA-2: Population shape (Prev-only / Curr-only / Both) (1 row) === */
+
+WITH latest_curr AS (
+  SELECT MAX(End_of_Month_Date) AS curr_eom
+  FROM V_SECURE_PORTFOLIO_DETAIL_LOANHUB
+  WHERE Non_Accrual_Flag = 'Y'
+),
+latest_prev AS (
+  SELECT MAX(End_of_Month_Date) AS prev_eom
+  FROM V_SECURE_PORTFOLIO_DETAIL_LOANHUB, latest_curr
+  WHERE End_of_Month_Date < (SELECT curr_eom FROM latest_curr)
+    AND Non_Accrual_Flag = 'Y'
+),
+params AS (
+  SELECT
+    (SELECT curr_eom FROM latest_curr) AS curr_eom,
+    (SELECT prev_eom FROM latest_prev) AS prev_eom
+),
+base AS (
+  SELECT
+    End_of_Month_Date,
+    UPPER(TRIM(Account_Key)) AS Account_Key,
+    Source_System_Balance
+  FROM V_SECURE_PORTFOLIO_DETAIL_LOANHUB
+  WHERE End_of_Month_Date IN ((SELECT prev_eom FROM params), (SELECT curr_eom FROM params))
+    AND Non_Accrual_Flag = 'Y'
+    AND GL_ACCOUNT_HIER_LEVEL_4 IN ('Total Loans','Lns Held for Sale')
+),
+prev_norm AS (
+  SELECT Account_Key, SUM(Source_System_Balance) AS Prev_SSB
+  FROM base
+  WHERE End_of_Month_Date = (SELECT prev_eom FROM params)
+  GROUP BY Account_Key
+),
+curr_norm AS (
+  SELECT Account_Key, SUM(Source_System_Balance) AS Curr_SSB
+  FROM base
+  WHERE End_of_Month_Date = (SELECT curr_eom FROM params)
+  GROUP BY Account_Key
+),
+joined AS (
+  SELECT
+    COALESCE(c.Account_Key, p.Account_Key) AS Account_Key,
+    p.Prev_SSB,
+    c.Curr_SSB
+  FROM curr_norm c
+  FULL OUTER JOIN prev_norm p
+    ON c.Account_Key = p.Account_Key
+),
+final_pop AS (
+  SELECT
+    Account_Key,
+    COALESCE(Prev_SSB,0) AS Prev_SSB,
+    COALESCE(Curr_SSB,0) AS Curr_SSB
+  FROM joined
+  WHERE NOT (COALESCE(Prev_SSB,0)=0 AND COALESCE(Curr_SSB,0)=0)
+)
+SELECT
+  COUNT(*) AS ACCOUNT_ROWS_IN_POP,
+  SUM(CASE WHEN Prev_SSB<>0 AND Curr_SSB=0 THEN 1 ELSE 0 END) AS PREV_ONLY_COUNT,
+  SUM(CASE WHEN Prev_SSB=0 AND Curr_SSB<>0 THEN 1 ELSE 0 END) AS CURR_ONLY_COUNT,
+  SUM(CASE WHEN Prev_SSB<>0 AND Curr_SSB<>0 THEN 1 ELSE 0 END) AS BOTH_MONTHS_COUNT
+FROM final_pop;
+
+
+
+
+
 /* === Source QA #3: Row counts (Prev/Curr) + Delta (1 row) === */
 
 WITH latest_curr AS (
